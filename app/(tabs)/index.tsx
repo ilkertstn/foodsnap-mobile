@@ -1,0 +1,378 @@
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import DaySummaryModal from "../../components/DaySummaryModal";
+import SuccessModal from "../../components/SuccessModal";
+import { useMeals } from "../../context/MealContext";
+import { FoodEntry, MealType } from "../../types";
+import { formatDate, getAdjustedDate, isAdjustedToday } from "../../utils/date";
+
+
+const MacroBar = ({ label, value, total, color }: { label: string, value: number, total: number, color: string }) => {
+    const widthPercent = Math.min(100, (value / total) * 100);
+
+    return (
+        <View style={styles.macroContainer}>
+            <View style={styles.macroHeader}>
+                <Text style={styles.macroLabel}>{label}</Text>
+                <Text style={styles.macroValue}>{Math.round(value)} / {total}g</Text>
+            </View>
+            <View style={styles.progressBarBg}>
+                <View style={[styles.progressBarFill, { width: `${widthPercent}%`, backgroundColor: color }]} />
+            </View>
+        </View>
+    );
+};
+
+// Helper for Meal Section
+const MealSection = ({ title, meals, onDelete }: { title: string, meals: FoodEntry[] | undefined, onDelete: (id: string) => void }) => {
+    if (!meals || meals.length === 0) {
+        return (
+            <View style={styles.sectionContainer}>
+                <Text style={styles.sectionTitle}>{title}</Text>
+                <View style={styles.emptyState}>
+                    <Text style={styles.emptyStateText}>No meals logged</Text>
+                </View>
+            </View>
+        );
+    }
+
+    return (
+        <View style={styles.sectionContainer}>
+            <Text style={styles.sectionTitle}>{title}</Text>
+            {meals.map((meal, index) => (
+                <Animated.View
+                    entering={FadeInDown.delay(index * 100).springify()}
+                    key={meal.id}
+                    style={styles.mealItem}
+                >
+                    <View style={styles.mealContent}>
+                        <Text style={styles.mealName}>{meal.meal_name}</Text>
+                        <Text style={styles.mealCalories}>{Math.round(meal.calories_kcal)} kcal</Text>
+                    </View>
+                    <Pressable onPress={() => onDelete(meal.id)} style={styles.deleteButton}>
+                        <Ionicons name="trash-outline" size={18} color="#ef4444" />
+                    </Pressable>
+                </Animated.View>
+            ))}
+        </View>
+    );
+};
+
+
+
+export default function Dashboard() {
+    const insets = useSafeAreaInsets();
+    const router = useRouter();
+    const { getDailySummary, logs, removeEntry, goals } = useMeals();
+
+
+    const [selectedDate, setSelectedDate] = useState(getAdjustedDate());
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [showDaySummaryModal, setShowDaySummaryModal] = useState(false);
+
+    const summary = getDailySummary(selectedDate);
+    const dayLog = logs[selectedDate];
+
+    const handleDelete = (mealType: MealType, id: string) => {
+        removeEntry(selectedDate, mealType, id);
+    };
+
+    const changeDate = (days: number) => {
+        const d = new Date(selectedDate);
+        d.setDate(d.getDate() + days);
+        setSelectedDate(d.toISOString().split("T")[0]);
+    };
+
+    const handleEndDay = () => {
+        setShowDaySummaryModal(true);
+    };
+
+    const handleDaySummaryClose = () => {
+        setShowDaySummaryModal(false);
+    };
+
+    return (
+        <View style={[styles.container, { paddingTop: insets.top }]}>
+
+            <LinearGradient
+                colors={["#f8fafc", "#eff6ff", "#e0f2fe"]}
+                style={StyleSheet.absoluteFill}
+            />
+
+            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+                {/* Header with Date Nav */}
+                <View style={styles.header}>
+                    <View>
+                        <Text style={styles.headerSub}>Daily Overview</Text>
+                        <View style={styles.dateNav}>
+                            <Pressable onPress={() => changeDate(-1)} style={styles.navArrow}>
+                                <Ionicons name="chevron-back" size={20} color="#64748b" />
+                            </Pressable>
+                            <Text style={styles.headerTitle}>{isAdjustedToday(selectedDate) ? "Today" : formatDate(selectedDate)}</Text>
+                            <Pressable onPress={() => changeDate(1)} style={[styles.navArrow, isAdjustedToday(selectedDate) && styles.disabledArrow]} disabled={isAdjustedToday(selectedDate)}>
+                                <Ionicons name="chevron-forward" size={20} color={isAdjustedToday(selectedDate) ? "#cbd5e1" : "#64748b"} />
+                            </Pressable>
+                        </View>
+                    </View>
+                    <Pressable onPress={() => router.push("/(tabs)/profile")} style={styles.profileButton}>
+                        <Ionicons name="person-circle-outline" size={32} color="#3b82f6" />
+                    </Pressable>
+                </View>
+
+
+                <View style={styles.summaryCard}>
+                    <View style={styles.caloriesRow}>
+                        <View>
+                            <Text style={styles.caloriesLabel}>Calories</Text>
+                            <Text style={styles.caloriesValue}>
+                                {Math.round(summary.consumed.calories)}
+                                <Text style={styles.caloriesTotal}> / {goals.calories}</Text>
+                            </Text>
+                        </View>
+                        <View style={styles.ringPlaceholder}>
+
+                            <Text style={[styles.ringText, { color: summary.remaining.calories < 0 ? "#ef4444" : "#10b981" }]}>
+                                {summary.remaining.calories} left
+                            </Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.macrosContainer}>
+                        <MacroBar label="Protein" value={summary.consumed.protein} total={goals.protein} color="#3b82f6" />
+                        <MacroBar label="Carbs" value={summary.consumed.carbs} total={goals.carbs} color="#10b981" />
+                        <MacroBar label="Fat" value={summary.consumed.fat} total={goals.fat} color="#f59e0b" />
+                    </View>
+                </View>
+
+
+                <MealSection
+                    title="Breakfast"
+                    meals={dayLog?.meals.breakfast}
+                    onDelete={(id) => handleDelete("breakfast", id)}
+                />
+                <MealSection
+                    title="Lunch"
+                    meals={dayLog?.meals.lunch}
+                    onDelete={(id) => handleDelete("lunch", id)}
+                />
+                <MealSection
+                    title="Dinner"
+                    meals={dayLog?.meals.dinner}
+                    onDelete={(id) => handleDelete("dinner", id)}
+                />
+                <MealSection
+                    title="Snacks"
+                    meals={dayLog?.meals.snack}
+                    onDelete={(id) => handleDelete("snack", id)}
+                />
+
+                {isAdjustedToday(selectedDate) && (
+                    <Pressable style={styles.endDayButton} onPress={handleEndDay}>
+                        <Text style={styles.endDayText}>Complete Day</Text>
+                    </Pressable>
+                )}
+
+                <SuccessModal
+                    visible={showSuccessModal}
+                    title="Day Completed!"
+                    message="Good job tracking today! Your logs are saved. See you tomorrow!"
+                    onClose={() => setShowSuccessModal(false)}
+                />
+
+                <DaySummaryModal
+                    visible={showDaySummaryModal}
+                    onClose={handleDaySummaryClose}
+                    date={selectedDate}
+                    consumed={summary.consumed}
+                    goals={goals}
+                />
+
+                <View style={{ height: 40 }} />
+            </ScrollView>
+        </View>
+    );
+}
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+    },
+    content: {
+        padding: 20,
+        paddingBottom: 40,
+    },
+    header: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 24,
+    },
+    headerSub: {
+        fontSize: 14,
+        color: "#64748b",
+        fontWeight: "600",
+        textTransform: "uppercase",
+    },
+    dateNav: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    navArrow: {
+        padding: 4,
+    },
+    disabledArrow: {
+        opacity: 0.3,
+    },
+    headerTitle: {
+        fontSize: 28,
+        fontWeight: "800",
+        color: "#1e293b",
+    },
+    profileButton: {
+        padding: 4,
+    },
+    endDayButton: {
+        backgroundColor: '#3b82f6',
+        padding: 16,
+        borderRadius: 16,
+        alignItems: 'center',
+        marginVertical: 20,
+        shadowColor: "#3b82f6",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    endDayText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    summaryCard: {
+        backgroundColor: "white",
+        borderRadius: 24,
+        padding: 20,
+        shadowColor: "#64748b",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.1,
+        shadowRadius: 24,
+        elevation: 8,
+        marginBottom: 24,
+    },
+    caloriesRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 20,
+    },
+    caloriesLabel: {
+        fontSize: 14,
+        color: "#64748b",
+        fontWeight: "600",
+    },
+    caloriesValue: {
+        fontSize: 32,
+        fontWeight: "800",
+        color: "#1e293b",
+    },
+    caloriesTotal: {
+        fontSize: 16,
+        color: "#94a3b8",
+        fontWeight: "600",
+    },
+    ringPlaceholder: {
+        alignItems: "flex-end",
+    },
+    ringText: {
+        fontSize: 16,
+        fontWeight: "700",
+    },
+    macrosContainer: {
+        gap: 12,
+    },
+    macroContainer: {
+        gap: 6,
+    },
+    macroHeader: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+    },
+    macroLabel: {
+        fontSize: 12,
+        fontWeight: "600",
+        color: "#64748b",
+    },
+    macroValue: {
+        fontSize: 12,
+        fontWeight: "600",
+        color: "#1e293b",
+    },
+    progressBarBg: {
+        height: 8,
+        backgroundColor: "#f1f5f9",
+        borderRadius: 4,
+        overflow: "hidden",
+    },
+    progressBarFill: {
+        height: "100%",
+        borderRadius: 4,
+    },
+    sectionContainer: {
+        marginBottom: 20,
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: "700",
+        color: "#1e293b",
+        marginBottom: 12,
+    },
+    emptyState: {
+        backgroundColor: "rgba(255,255,255,0.5)",
+        padding: 16,
+        borderRadius: 16,
+        alignItems: "center",
+        borderWidth: 1,
+        borderColor: "#e2e8f0",
+        borderStyle: "dashed",
+    },
+    emptyStateText: {
+        color: "#94a3b8",
+        fontWeight: "500",
+    },
+    mealItem: {
+        backgroundColor: "white",
+        borderRadius: 16,
+        padding: 16,
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 8,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    mealContent: {
+        gap: 2,
+    },
+    mealName: {
+        fontSize: 16,
+        fontWeight: "600",
+        color: "#1e293b",
+    },
+    mealCalories: {
+        fontSize: 13,
+        color: "#64748b",
+        fontWeight: "500",
+    },
+    deleteButton: {
+        padding: 8,
+    },
+});
