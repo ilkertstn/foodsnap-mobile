@@ -5,8 +5,11 @@ import React, { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AchievementModal from "../../components/AchievementModal";
+import AddExerciseModal from "../../components/AddExerciseModal";
 import DaySummaryModal from "../../components/DaySummaryModal";
 import SuccessModal from "../../components/SuccessModal";
+import WaterTracker from "../../components/WaterTracker";
 import { useMeals } from "../../context/MealContext";
 import { FoodEntry, MealType } from "../../types";
 import { formatDate, getAdjustedDate, isAdjustedToday } from "../../utils/date";
@@ -68,12 +71,14 @@ const MealSection = ({ title, meals, onDelete }: { title: string, meals: FoodEnt
 export default function Dashboard() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
-    const { getDailySummary, logs, removeEntry, goals } = useMeals();
+    const { getDailySummary, logs, removeEntry, goals, addExercise, removeExercise } = useMeals();
 
 
     const [selectedDate, setSelectedDate] = useState(getAdjustedDate());
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [showDaySummaryModal, setShowDaySummaryModal] = useState(false);
+    const [showExerciseModal, setShowExerciseModal] = useState(false);
+    const { newlyUnlockedBadge, clearNewBadge } = useMeals();
 
     const summary = getDailySummary(selectedDate);
     const dayLog = logs[selectedDate];
@@ -150,6 +155,44 @@ export default function Dashboard() {
                 </View>
 
 
+                {/* Active Calories Card */}
+                <View style={styles.activeCard}>
+                    <View style={styles.activeHeader}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Ionicons name="flame" size={24} color="#f59e0b" />
+                            <Text style={styles.activeTitle}>Active Calories</Text>
+                        </View>
+                        <Pressable onPress={() => setShowExerciseModal(true)} style={styles.addExerciseButton}>
+                            <Ionicons name="add" size={20} color="white" />
+                        </Pressable>
+                    </View>
+                    <View style={styles.activeContent}>
+                        <Text style={styles.activeValue}>{Math.round(summary.burned)} <Text style={styles.activeUnit}>kcal burned</Text></Text>
+                        {dayLog?.exercises && dayLog.exercises.length > 0 && (
+                            <View style={{ marginTop: 12, gap: 8 }}>
+                                {dayLog.exercises.map(exercise => (
+                                    <View key={exercise.id} style={styles.exerciseItem}>
+                                        <View>
+                                            <Text style={styles.exerciseName}>{exercise.type}</Text>
+                                            <Text style={styles.exerciseDetail}>{exercise.durationMinutes} mins</Text>
+                                        </View>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                            <Text style={styles.exerciseCalories}>{Math.round(exercise.caloriesBurned)} kcal</Text>
+                                            <Pressable onPress={() => removeExercise(selectedDate, exercise.id)}>
+                                                <Ionicons name="trash-outline" size={16} color="#94a3b8" />
+                                            </Pressable>
+                                        </View>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
+                    </View>
+                </View>
+
+                {/* Water Tracker */}
+                <WaterTracker />
+
+
                 <MealSection
                     title="Breakfast"
                     meals={dayLog?.meals.breakfast}
@@ -171,11 +214,13 @@ export default function Dashboard() {
                     onDelete={(id) => handleDelete("snack", id)}
                 />
 
-                {isAdjustedToday(selectedDate) && (
-                    <Pressable style={styles.endDayButton} onPress={handleEndDay}>
-                        <Text style={styles.endDayText}>Complete Day</Text>
-                    </Pressable>
-                )}
+                {
+                    isAdjustedToday(selectedDate) && (
+                        <Pressable style={styles.endDayButton} onPress={handleEndDay}>
+                            <Text style={styles.endDayText}>Complete Day</Text>
+                        </Pressable>
+                    )
+                }
 
                 <SuccessModal
                     visible={showSuccessModal}
@@ -192,9 +237,20 @@ export default function Dashboard() {
                     goals={goals}
                 />
 
+                <AddExerciseModal
+                    visible={showExerciseModal}
+                    onClose={() => setShowExerciseModal(false)}
+                    onAdd={(exercise) => addExercise(selectedDate, exercise)}
+                />
+
+                <AchievementModal
+                    badge={newlyUnlockedBadge}
+                    onClose={clearNewBadge}
+                />
+
                 <View style={{ height: 40 }} />
-            </ScrollView>
-        </View>
+            </ScrollView >
+        </View >
     );
 }
 
@@ -374,5 +430,67 @@ const styles = StyleSheet.create({
     },
     deleteButton: {
         padding: 8,
+    },
+    activeCard: {
+        backgroundColor: "white",
+        borderRadius: 24,
+        padding: 20,
+        marginBottom: 24,
+        shadowColor: "#f59e0b",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.1,
+        shadowRadius: 24,
+        elevation: 8,
+    },
+    activeHeader: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 16,
+    },
+    activeTitle: {
+        fontSize: 18,
+        fontWeight: "700",
+        color: "#1e293b",
+    },
+    addExerciseButton: {
+        backgroundColor: "#f59e0b",
+        padding: 8,
+        borderRadius: 12,
+    },
+    activeContent: {
+        gap: 4,
+    },
+    activeValue: {
+        fontSize: 32,
+        fontWeight: "800",
+        color: "#1e293b",
+    },
+    activeUnit: {
+        fontSize: 16,
+        color: "#f59e0b",
+        fontWeight: "600",
+    },
+    exerciseItem: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: "#f1f5f9",
+    },
+    exerciseName: {
+        fontSize: 14,
+        fontWeight: "600",
+        color: "#1e293b",
+    },
+    exerciseDetail: {
+        fontSize: 12,
+        color: "#64748b",
+    },
+    exerciseCalories: {
+        fontSize: 14,
+        fontWeight: "700",
+        color: "#f59e0b",
     },
 });

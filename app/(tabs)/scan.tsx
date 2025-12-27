@@ -19,25 +19,16 @@ import {
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMeals } from "../../context/MealContext";
-import { MealType } from "../../types";
+import { FoodResult, MealType } from "../../types";
 import { getAdjustedDate } from "../../utils/date";
 
 const { width } = Dimensions.get("window");
 // You can switch this to your local IP
 const API_BASE = "http://192.168.1.11:3000";
 
-type FoodResult = {
-  meal_name: string;
-  category: MealType;
-  calories_kcal: number;
-  macros_g: { protein: number; carbs: number; fat: number };
-  ingredients: string[];
-  confidence: "low" | "medium" | "high";
-  notes: string;
-};
-
 const MEAL_TYPES: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
 
+import BarcodeScanner from "../../components/BarcodeScanner";
 import SuccessModal from "../../components/SuccessModal";
 
 export default function ScanScreen() {
@@ -52,6 +43,8 @@ export default function ScanScreen() {
   const [result, setResult] = useState<FoodResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<MealType>("lunch");
+
+  const [isScanning, setIsScanning] = useState(false);
 
   // Success Modal
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -132,19 +125,40 @@ export default function ScanScreen() {
     }
   };
 
+  // Calculate displayed values based on weight input
+  const displayedResult = useMemo(() => {
+    if (!result) return null;
+
+    // If it's a barcode scan (per 100g) and we have a custom weight
+    if (result.quantity_basis === "100g" && grams) {
+      const ratio = grams / 100;
+      return {
+        ...result,
+        calories_kcal: result.calories_kcal * ratio,
+        macros_g: {
+          protein: result.macros_g.protein * ratio,
+          carbs: result.macros_g.carbs * ratio,
+          fat: result.macros_g.fat * ratio,
+        }
+      };
+    }
+
+    return result;
+  }, [result, grams]);
+
   const handleSaveToLog = () => {
-    if (!result) return;
+    if (!displayedResult) return;
 
     const today = getAdjustedDate();
 
     addEntry(today, selectedCategory, {
-      meal_name: result.meal_name,
+      meal_name: displayedResult.meal_name,
       category: selectedCategory,
-      calories_kcal: result.calories_kcal,
-      macros_g: result.macros_g,
-      ingredients: result.ingredients,
-      confidence: result.confidence,
-      notes: result.notes,
+      calories_kcal: displayedResult.calories_kcal, // Use scaled values
+      macros_g: displayedResult.macros_g,
+      ingredients: displayedResult.ingredients,
+      confidence: displayedResult.confidence,
+      notes: displayedResult.notes,
       grams: grams,
       imageUri: imageUri || undefined,
     });
@@ -159,6 +173,21 @@ export default function ScanScreen() {
     setImageBase64(null);
     router.push("/(tabs)");
   };
+
+  const handleBarcodeResult = (scannedResult: FoodResult) => {
+    setResult(scannedResult);
+    setIsScanning(false);
+    setImageUri(null); // Clear image if any
+  };
+
+  if (isScanning) {
+    return (
+      <BarcodeScanner
+        onResult={handleBarcodeResult}
+        onCancel={() => setIsScanning(false)}
+      />
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -214,6 +243,20 @@ export default function ScanScreen() {
             </Pressable>
           </View>
 
+          <View style={{ marginTop: 12 }}>
+            <Pressable
+              onPress={() => setIsScanning(true)}
+              style={({ pressed }) => [
+                styles.actionButton,
+                styles.barcodeButton,
+                pressed && styles.buttonPressed,
+              ]}
+            >
+              <Ionicons name="barcode-outline" size={24} color="#1e293b" />
+              <Text style={styles.barcodeButtonText}>Scan Barcode</Text>
+            </Pressable>
+          </View>
+
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Weight (optional)</Text>
             <View style={styles.inputWrapper}>
@@ -251,11 +294,11 @@ export default function ScanScreen() {
           </Animated.View>
         )}
 
-        {result && (
+        {displayedResult && (
           <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.resultCard}>
             <View style={styles.resultHeader}>
               <View>
-                <Text style={styles.mealName}>{result.meal_name}</Text>
+                <Text style={styles.mealName}>{displayedResult.meal_name}</Text>
                 {/* Category Selector */}
                 <View style={styles.categorySelector}>
                   {MEAL_TYPES.map(type => (
@@ -276,10 +319,15 @@ export default function ScanScreen() {
                     </Pressable>
                   ))}
                 </View>
+                {result?.quantity_basis === "100g" && (
+                  <Text style={styles.servingHint}>
+                    {grams ? `Calculated for ${grams}g` : "Values per 100g"}
+                  </Text>
+                )}
               </View>
               <View style={styles.caloriesContainer}>
-                <Text style={styles.caloriesValue}>
-                  {Math.round(result.calories_kcal)}
+                <Text style={[styles.caloriesValue, { fontSize: Math.round(displayedResult.calories_kcal).toString().length > 4 ? 24 : 32 }]}>
+                  {Math.round(displayedResult.calories_kcal)}
                 </Text>
                 <Text style={styles.caloriesLabel}>kcal</Text>
               </View>
@@ -290,17 +338,17 @@ export default function ScanScreen() {
             <View style={styles.macrosRow}>
               <MacroItem
                 label="Protein"
-                value={result.macros_g.protein}
+                value={displayedResult.macros_g.protein}
                 color="#3b82f6"
               />
               <MacroItem
                 label="Carbs"
-                value={result.macros_g.carbs}
+                value={displayedResult.macros_g.carbs}
                 color="#10b981"
               />
               <MacroItem
                 label="Fat"
-                value={result.macros_g.fat}
+                value={displayedResult.macros_g.fat}
                 color="#f59e0b"
               />
             </View>
@@ -321,11 +369,11 @@ export default function ScanScreen() {
             <View style={styles.detailsSection}>
               <Text style={styles.sectionTitle}>Ingredients</Text>
               <Text style={styles.bodyText}>
-                {result.ingredients.join(", ")}
+                {displayedResult.ingredients.join(", ")}
               </Text>
 
               <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Notes</Text>
-              <Text style={styles.bodyText}>{result.notes}</Text>
+              <Text style={styles.bodyText}>{displayedResult.notes}</Text>
             </View>
           </Animated.View>
         )}
@@ -436,6 +484,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
+  barcodeButton: {
+    backgroundColor: "#f1f5f9",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  barcodeButtonText: {
+    color: "#1e293b",
+    fontSize: 16,
+    fontWeight: "600",
+  },
   saveButton: {
     backgroundColor: "#10b981",
     flexDirection: "row",
@@ -458,6 +516,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: "#64748b",
+    paddingTop: 8
   },
   inputWrapper: {
     flexDirection: "row",
@@ -545,7 +604,8 @@ const styles = StyleSheet.create({
     color: "#1e293b",
     marginBottom: 8,
     textTransform: "capitalize",
-    maxWidth: "60%",
+    flex: 1,
+    marginRight: 12,
   },
   badge: {
     paddingHorizontal: 10,
@@ -586,11 +646,17 @@ const styles = StyleSheet.create({
   categoryChipTextActive: {
     color: 'white',
   },
+  servingHint: {
+    fontSize: 12,
+    color: "#94a3b8",
+    fontStyle: "italic",
+    marginTop: 4,
+  },
   caloriesContainer: {
     alignItems: "flex-end",
+    flexShrink: 0,
   },
   caloriesValue: {
-    fontSize: 32,
     fontWeight: "800",
     color: "#3b82f6",
     lineHeight: 32,

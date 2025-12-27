@@ -1,9 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useState } from "react";
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import SuccessModal from "../../components/SuccessModal";
+import { ALL_BADGES } from "../../constants/badges";
 import { useMeals } from "../../context/MealContext";
 
 const SectionHeader = ({ title, icon }: { title: string; icon: keyof typeof Ionicons.glyphMap }) => (
@@ -66,7 +68,7 @@ const SelectionModal = ({
 
 export default function Profile() {
     const insets = useSafeAreaInsets();
-    const { profile, updateProfile, goals, updateGoals } = useMeals();
+    const { profile, updateProfile, goals, updateGoals, toggleReminder } = useMeals();
 
     const [localProfile, setLocalProfile] = useState(profile);
     const [localGoals, setLocalGoals] = useState(goals);
@@ -81,6 +83,11 @@ export default function Profile() {
 
 
     React.useEffect(() => {
+        if (isEditing) {
+            setLocalProfile(profile);
+            setLocalGoals(goals);
+        }
+
         if (goals.strategy === "auto" && isEditing) {
             let bmr = 0;
             if (localProfile.gender === "male") {
@@ -111,16 +118,28 @@ export default function Profile() {
                 protein: pG,
                 carbs: cG,
                 fat: fG,
+                water: localGoals.water || 2500,
                 strategy: "auto"
             });
         }
-    }, [localProfile, goals.strategy, isEditing]);
+    }, [isEditing, profile, goals, localProfile.age, localProfile.activity, localProfile.gender, localProfile.goal, localProfile.heightCm, localProfile.weightKg, goals.strategy, localGoals.water]);
 
-    const handleSave = () => {
+    const handleSave = async () => {
+        // Check if reminders changed
+        if (localProfile.reminders?.water !== profile.reminders?.water) {
+            await toggleReminder('water', localProfile.reminders?.water ?? false);
+        }
+        if (localProfile.reminders?.meals !== profile.reminders?.meals) {
+            await toggleReminder('meals', localProfile.reminders?.meals ?? false);
+        }
+
         updateProfile(localProfile);
 
-        if (goals.strategy === "manual") {
+        if (localGoals.strategy === "manual") {
             updateGoals(localGoals);
+        } else {
+            // If switching back to auto, ensure strategy is set
+            updateGoals({ strategy: "auto" });
         }
         setIsEditing(false);
         setShowSuccessModal(true);
@@ -267,6 +286,145 @@ export default function Profile() {
                         )}
                     </View>
 
+                    {isEditing && (
+                        <>
+                            <View style={styles.sectionHeader}>
+                                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                    <Ionicons name="notifications" size={20} color="#3b82f6" />
+                                    <Text style={styles.sectionTitle}>Reminders</Text>
+                                </View>
+                            </View>
+
+                            <View style={styles.card}>
+                                <View style={styles.goalRow}>
+                                    <View>
+                                        <Text style={styles.goalLabel}>💧 Water Reminders</Text>
+                                        <Text style={styles.macroLabel}>Every {localProfile.reminders?.waterInterval || 2} hours</Text>
+                                    </View>
+                                    <Switch
+                                        value={localProfile.reminders?.water ?? false}
+                                        onValueChange={(val) => {
+                                            setLocalProfile(prev => ({
+                                                ...prev,
+                                                reminders: {
+                                                    waterInterval: 2,
+                                                    waterStart: "09:00",
+                                                    waterEnd: "21:00",
+                                                    breakfastTime: "09:00",
+                                                    lunchTime: "13:00",
+                                                    dinnerTime: "19:00",
+                                                    meals: false,
+                                                    ...prev.reminders,
+                                                    water: val
+                                                }
+                                            }));
+                                        }}
+                                        trackColor={{ true: "#3b82f6" }}
+                                    />
+                                </View>
+
+                                {localProfile.reminders?.water && (
+                                    <View style={{ marginTop: 12, gap: 12 }}>
+                                        <View style={styles.timeRow}>
+                                            <Text style={styles.timeLabel}>Start Time</Text>
+                                            <DateTimePicker
+                                                value={(() => {
+                                                    const [h, m] = (localProfile.reminders?.waterStart || "09:00").split(':').map(Number);
+                                                    const d = new Date(); d.setHours(h, m); return d;
+                                                })()}
+                                                mode="time"
+                                                is24Hour={true}
+                                                display="default"
+                                                onChange={(e, d) => {
+                                                    if (d) {
+                                                        const time = d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
+                                                        setLocalProfile(p => ({ ...p, reminders: { ...p.reminders!, waterStart: time } }));
+                                                    }
+                                                }}
+                                                style={{ width: 100 }}
+                                            />
+                                        </View>
+                                        <View style={styles.timeRow}>
+                                            <Text style={styles.timeLabel}>End Time</Text>
+                                            <DateTimePicker
+                                                value={(() => {
+                                                    const [h, m] = (localProfile.reminders?.waterEnd || "21:00").split(':').map(Number);
+                                                    const d = new Date(); d.setHours(h, m); return d;
+                                                })()}
+                                                mode="time"
+                                                is24Hour={true}
+                                                display="default"
+                                                onChange={(e, d) => {
+                                                    if (d) {
+                                                        const time = d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
+                                                        setLocalProfile(p => ({ ...p, reminders: { ...p.reminders!, waterEnd: time } }));
+                                                    }
+                                                }}
+                                                style={{ width: 100 }}
+                                            />
+                                        </View>
+                                    </View>
+                                )}
+
+                                <View style={styles.divider} />
+
+                                <View style={styles.goalRow}>
+                                    <Text style={styles.goalLabel}>🍽️ Meal Reminders</Text>
+                                    <Switch
+                                        value={localProfile.reminders?.meals ?? false}
+                                        onValueChange={(val) => {
+                                            setLocalProfile(prev => ({
+                                                ...prev,
+                                                reminders: {
+                                                    waterInterval: 2,
+                                                    waterStart: "09:00",
+                                                    waterEnd: "21:00",
+                                                    breakfastTime: "09:00",
+                                                    lunchTime: "13:00",
+                                                    dinnerTime: "19:00",
+                                                    water: false,
+                                                    ...prev.reminders,
+                                                    meals: val
+                                                }
+                                            }));
+                                        }}
+                                        trackColor={{ true: "#10b981" }}
+                                    />
+                                </View>
+
+                                {localProfile.reminders?.meals && (
+                                    <View style={{ marginTop: 12, gap: 12 }}>
+                                        {[
+                                            { label: "Breakfast", key: "breakfastTime" },
+                                            { label: "Lunch", key: "lunchTime" },
+                                            { label: "Dinner", key: "dinnerTime" }
+                                        ].map((meal) => (
+                                            <View key={meal.key} style={styles.timeRow}>
+                                                <Text style={styles.timeLabel}>{meal.label}</Text>
+                                                <DateTimePicker
+                                                    value={(() => {
+                                                        const [h, m] = ((localProfile.reminders as any)?.[meal.key] || "09:00").split(':').map(Number);
+                                                        const d = new Date(); d.setHours(h, m); return d;
+                                                    })()}
+                                                    mode="time"
+                                                    is24Hour={true}
+                                                    display="default"
+                                                    onChange={(e, d) => {
+                                                        if (d) {
+                                                            const time = d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
+                                                            setLocalProfile(p => ({ ...p, reminders: { ...p.reminders!, [meal.key]: time } }));
+                                                        }
+                                                    }}
+                                                    style={{ width: 100 }}
+                                                />
+                                            </View>
+                                        ))}
+                                    </View>
+                                )}
+                            </View>
+                        </>
+                    )}
+
                     <View style={styles.card}>
                         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -350,9 +508,52 @@ export default function Profile() {
                                         <Text style={styles.macroLabel}>Fat</Text>
                                     </View>
                                 </View>
+                                <View style={styles.divider} />
+                                <View style={styles.goalRow}>
+                                    <Text style={styles.goalLabel}>Water Goal</Text>
+                                    <Text style={[styles.goalValue, { color: "#0ea5e9" }]}>{goals.water || 2500} ml</Text>
+                                </View>
+                            </View>
+                        )}
+
+                        {isEditing && (
+                            <View style={[styles.formGrid, { marginTop: 16 }]}>
+                                <View style={styles.divider} />
+                                <Text style={[styles.sectionTitle, { fontSize: 16 }]}>Hydration Goal</Text>
+                                <InputField
+                                    label="Daily Water (ml)"
+                                    value={localGoals.water ? String(localGoals.water) : ""}
+                                    onChange={t => setLocalGoals({ ...localGoals, water: t === "" ? 0 : Number(t) })}
+                                    placeholder="2500"
+                                    numeric
+                                />
                             </View>
                         )}
                     </View>
+
+                    <View style={styles.card}>
+                        <View style={styles.sectionHeader}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                <Ionicons name="trophy" size={20} color="#f59e0b" />
+                                <Text style={styles.sectionTitle}>Achievements</Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.badgesGrid}>
+                            {ALL_BADGES.map((badge) => {
+                                const isUnlocked = profile.unlockedBadges?.some(b => b.badgeId === badge.id);
+                                return (
+                                    <View key={badge.id} style={[styles.badgeItem, !isUnlocked && styles.badgeLocked]}>
+                                        <View style={[styles.badgeIcon, !isUnlocked && styles.badgeIconLocked]}>
+                                            <Ionicons name={badge.icon as any} size={28} color={isUnlocked ? "#f59e0b" : "#94a3b8"} />
+                                        </View>
+                                        <Text style={styles.badgeText}>{badge.title}</Text>
+                                    </View>
+                                );
+                            })}
+                        </View>
+                    </View>
+
                 </ScrollView>
             </KeyboardAvoidingView>
 
@@ -596,5 +797,50 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: "#1e293b",
         fontWeight: '500',
+    },
+    timeRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 4,
+    },
+    timeLabel: {
+        fontSize: 14,
+        color: "#64748b",
+        fontWeight: "500",
+    },
+    badgesGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 16,
+        justifyContent: 'space-between',
+    },
+    badgeItem: {
+        width: '30%',
+        alignItems: 'center',
+        gap: 8,
+    },
+    badgeLocked: {
+        opacity: 0.5,
+    },
+    badgeIcon: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: "#fef3c7",
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: "#fcd34d",
+    },
+    badgeIconLocked: {
+        backgroundColor: "#f1f5f9",
+        borderColor: "#cbd5e1",
+    },
+    badgeText: {
+        fontSize: 12,
+        fontWeight: "600",
+        color: "#1e293b",
+        textAlign: "center",
     },
 });
