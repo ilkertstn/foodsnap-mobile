@@ -92,7 +92,7 @@ export default function LoginScreen() {
             style={styles.container}
         >
             <LinearGradient
-                colors={["#0f172a", "#1e293b", "#334155"]}
+                colors={["#ffffff", "#f8fafc", "#f1f5f9"]}
                 style={StyleSheet.absoluteFill}
             />
 
@@ -199,17 +199,16 @@ const styles = StyleSheet.create({
         width: 120,
         height: 120,
         marginBottom: 24,
-        borderRadius: 24, // Slight rounding if the logo is square
     },
     title: {
         fontSize: 32,
         fontWeight: "800",
-        color: "#f8fafc",
+        color: "#1e293b",
         marginBottom: 8,
     },
     subtitle: {
         fontSize: 16,
-        color: "#cbd5e1",
+        color: "#64748b",
     },
     form: {
         gap: 20,
@@ -220,25 +219,25 @@ const styles = StyleSheet.create({
     label: {
         fontSize: 14,
         fontWeight: "600",
-        color: "#e2e8f0",
+        color: "#475569",
     },
     input: {
-        backgroundColor: "rgba(255,255,255,0.1)", // Glass effect
+        backgroundColor: "white",
         padding: 16,
         borderRadius: 12,
         fontSize: 16,
-        color: "#f8fafc",
+        color: "#1e293b",
         borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.2)",
+        borderColor: "#e2e8f0",
     },
     button: {
-        backgroundColor: "#6366f1", // More vivid indigo to match bg
+        backgroundColor: "#2563eb",
         padding: 18,
         borderRadius: 16,
         alignItems: "center",
-        shadowColor: "#6366f1",
+        shadowColor: "#2563eb",
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.2,
         shadowRadius: 8,
         elevation: 4,
         marginTop: 8,
@@ -248,8 +247,7 @@ const styles = StyleSheet.create({
         marginTop: 0,
         shadowOpacity: 0,
         elevation: 0,
-        borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.2)",
+        borderWidth: 0,
     },
     buttonText: {
         color: "white",
@@ -257,7 +255,7 @@ const styles = StyleSheet.create({
         fontWeight: "700",
     },
     ghostButtonText: {
-        color: "#e0e7ff",
+        color: "#2563eb",
     },
     footer: {
         flexDirection: "row",
@@ -265,11 +263,11 @@ const styles = StyleSheet.create({
         marginTop: 16,
     },
     footerText: {
-        color: "#cbd5e1",
+        color: "#64748b",
         fontSize: 14,
     },
     link: {
-        color: "#818cf8",
+        color: "#2563eb",
         fontSize: 14,
         fontWeight: "700",
     },
@@ -282,7 +280,7 @@ const styles = StyleSheet.create({
     line: {
         flex: 1,
         height: 1,
-        backgroundColor: "rgba(255,255,255,0.2)",
+        backgroundColor: "#e2e8f0",
     },
     orText: {
         color: "#94a3b8",

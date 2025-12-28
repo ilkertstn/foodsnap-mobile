@@ -1,128 +1,226 @@
+import CustomAlertModal, { AlertType } from "@/components/CustomAlertModal";
+import { useAuth } from "@/context/AuthContext";
+import { getAuthErrorMessage } from "@/utils/authErrors";
+import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { useAuth } from "../../context/AuthContext";
+import {
+    ActivityIndicator,
+    KeyboardAvoidingView,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from "react-native";
 
 export default function LinkAccountScreen() {
+    const router = useRouter();
+    const { linkAccount } = useAuth();
+
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [isLinking, setIsLinking] = useState(false);
-    const router = useRouter();
-    const { linkAccount } = useAuth(); // We added this earlier
+    const [isLoading, setIsLoading] = useState(false);
+
+    // Custom Alert State
+    const [alertVisible, setAlertVisible] = useState(false);
+    const [alertConfig, setAlertConfig] = useState<{
+        type: AlertType;
+        title: string;
+        message: string;
+        primaryText?: string;
+        onPrimary: () => void;
+    }>({
+        type: "error",
+        title: "",
+        message: "",
+        onPrimary: () => { },
+    });
+
+    const showCustomAlert = (type: AlertType, title: string, message: string, onPrimary?: () => void) => {
+        setAlertConfig({
+            type,
+            title,
+            message,
+            primaryText: "OK",
+            onPrimary: () => {
+                setAlertVisible(false);
+                if (onPrimary) onPrimary();
+            },
+        });
+        setAlertVisible(true);
+    };
 
     const handleLink = async () => {
         const cleanEmail = email.trim();
         if (!cleanEmail || !password) {
-            Alert.alert("Error", "Please enter email and password");
+            showCustomAlert("error", "Error", "Please enter email and password");
             return;
         }
 
-        setIsLinking(true);
+        setIsLoading(true);
         try {
             await linkAccount(cleanEmail, password);
-            Alert.alert("Success", "Your account has been linked!", [
-                { text: "OK", onPress: () => router.replace("/(tabs)/profile") }
-            ]);
+            showCustomAlert("success", "Success", "Your account has been linked!", () => {
+                router.replace("/(tabs)/profile");
+            });
         } catch (error: any) {
-            let msg = "Failed to link account.";
-            if (error.code === 'auth/email-already-in-use') {
-                msg = "This email is already in use. Please sign in (not yet implemented in this flow).";
-            } else if (error.code === 'auth/credential-already-in-use') {
-                msg = "This email is already associated with another account.";
-            } else if (error.code === 'auth/weak-password') {
-                msg = "Password should be at least 6 characters.";
-            } else if (error.code === 'auth/requires-recent-login') {
-                msg = "This operation requires a recent login. Please restart the app.";
-            } else if (error.code === 'auth/invalid-email') {
-                msg = "The email address is invalid. Please check for typos.";
-            } else {
-                msg = `Error: ${error.message} (${error.code})`;
-            }
-            Alert.alert("Link Failed", msg);
+            showCustomAlert("error", "Link Failed", getAuthErrorMessage(error));
         } finally {
-            setIsLinking(false);
+            setIsLoading(false);
         }
     };
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Backup Your Data</Text>
-            <Text style={styles.subtitle}>Create an account to save your progress permanently.</Text>
-
-            <TextInput
-                style={styles.input}
-                placeholder="Email"
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-            />
-            <TextInput
-                style={styles.input}
-                placeholder="Password"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
+        <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.container}
+        >
+            <LinearGradient
+                colors={["#ffffff", "#f8fafc", "#f1f5f9"]}
+                style={StyleSheet.absoluteFill}
             />
 
-            <TouchableOpacity style={styles.button} onPress={handleLink} disabled={isLinking}>
-                {isLinking ? (
-                    <ActivityIndicator color="white" />
-                ) : (
-                    <Text style={styles.buttonText}>Create Account</Text>
-                )}
-            </TouchableOpacity>
+            <View style={styles.content}>
+                <View style={styles.header}>
+                    <Image
+                        source={require("../../assets/images/foodsnap-logo.png")}
+                        style={styles.logo}
+                        contentFit="contain"
+                    />
+                    <Text style={styles.title}>Save Your Progress</Text>
+                    <Text style={styles.subtitle}>Create an account to keep your data safe forever</Text>
+                </View>
 
-            <TouchableOpacity style={styles.skipButton} onPress={() => router.back()}>
-                <Text style={styles.skipText}>Cancel</Text>
-            </TouchableOpacity>
-        </View>
+                <View style={styles.form}>
+                    <View style={styles.inputContainer}>
+                        <Text style={styles.label}>Email</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="email@example.com"
+                            value={email}
+                            onChangeText={setEmail}
+                            autoCapitalize="none"
+                            keyboardType="email-address"
+                        />
+                    </View>
+
+                    <View style={styles.inputContainer}>
+                        <Text style={styles.label}>Password</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Create a password"
+                            value={password}
+                            onChangeText={setPassword}
+                            secureTextEntry
+                        />
+                    </View>
+
+                    <TouchableOpacity
+                        style={styles.button}
+                        onPress={handleLink}
+                        disabled={isLoading}
+                    >
+                        {isLoading ? (
+                            <ActivityIndicator color="white" />
+                        ) : (
+                            <Text style={styles.buttonText}>Link Account</Text>
+                        )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.ghostButton} onPress={() => router.back()}>
+                        <Text style={styles.ghostButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+
+            <CustomAlertModal
+                visible={alertVisible}
+                type={alertConfig.type}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                primaryButtonText={alertConfig.primaryText}
+                onPrimaryPress={alertConfig.onPrimary}
+            />
+        </KeyboardAvoidingView>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+    },
+    content: {
+        flex: 1,
         padding: 24,
         justifyContent: "center",
-        backgroundColor: "#fff",
+    },
+    header: {
+        alignItems: "center",
+        marginBottom: 40,
+    },
+    logo: {
+        width: 100,
+        height: 100,
+        marginBottom: 24,
     },
     title: {
-        fontSize: 28,
-        fontWeight: "bold",
+        fontSize: 32,
+        fontWeight: "800",
+        color: "#1e293b",
         marginBottom: 8,
-        color: "#1a1a1a",
     },
     subtitle: {
         fontSize: 16,
-        color: "#666",
-        marginBottom: 32,
+        color: "#64748b",
+        textAlign: "center",
+    },
+    form: {
+        gap: 20,
+    },
+    inputContainer: {
+        gap: 8,
+    },
+    label: {
+        fontSize: 14,
+        fontWeight: "600",
+        color: "#475569",
     },
     input: {
-        backgroundColor: "#f5f5f5",
+        backgroundColor: "white",
         padding: 16,
         borderRadius: 12,
-        marginBottom: 16,
         fontSize: 16,
+        color: "#1e293b",
+        borderWidth: 1,
+        borderColor: "#e2e8f0",
     },
     button: {
-        backgroundColor: "#007AFF",
-        padding: 16,
-        borderRadius: 12,
+        backgroundColor: "#2563eb",
+        padding: 18,
+        borderRadius: 16,
         alignItems: "center",
-        marginBottom: 12,
+        shadowColor: "#2563eb",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 4,
+        marginTop: 8,
     },
     buttonText: {
         color: "white",
         fontSize: 16,
-        fontWeight: "600",
+        fontWeight: "700",
     },
-    skipButton: {
-        padding: 12,
+    ghostButton: {
         alignItems: "center",
+        padding: 16,
     },
-    skipText: {
-        color: "#666",
+    ghostButtonText: {
+        color: "#64748b",
         fontSize: 16,
+        fontWeight: "600",
     },
 });

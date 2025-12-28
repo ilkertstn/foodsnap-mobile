@@ -1,5 +1,6 @@
 import { useAuth } from "@/context/AuthContext";
 import { getAuthErrorMessage } from "@/utils/authErrors";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { Link, useRouter } from "expo-router";
 import { useState } from "react";
@@ -72,12 +73,17 @@ export default function SignUpScreen() {
             style={styles.container}
         >
             <LinearGradient
-                colors={["#ffffff", "#f0f9ff", "#e0f2fe"]}
+                colors={["#ffffff", "#f8fafc", "#f1f5f9"]}
                 style={StyleSheet.absoluteFill}
             />
 
             <View style={styles.content}>
                 <View style={styles.header}>
+                    <Image
+                        source={require("../../assets/images/foodsnap-logo.png")}
+                        style={styles.logo}
+                        contentFit="contain"
+                    />
                     <Text style={styles.title}>Create Account</Text>
                     <Text style={styles.subtitle}>Start your healthy journey today</Text>
                 </View>
@@ -152,6 +158,11 @@ const styles = StyleSheet.create({
     header: {
         alignItems: "center",
         marginBottom: 40,
+    },
+    logo: {
+        width: 100,
+        height: 100,
+        marginBottom: 24,
     },
     title: {
         fontSize: 32,
