@@ -6,38 +6,54 @@ import { AuthProvider, useAuth } from "../context/AuthContext";
 import { MealProvider, useMeals } from "../context/MealContext";
 
 function RootLayoutNav() {
-  const { user, isLoading, signInGuest } = useAuth();
+  const { user, isLoading: isAuthLoading, signInGuest } = useAuth();
   const { showBackupPrompt, dismissBackupPrompt } = useMeals();
   const segments = useSegments() as string[];
   const router = useRouter();
-
+  // Routing Effect
   useEffect(() => {
-    if (isLoading) return;
+    if (isAuthLoading) return;
 
     const inAuthGroup = segments[0] === "auth";
-    const inTabsGroup = segments[0] === "(tabs)";
+    const inPaywall = segments[0] === "paywall";
     const inWelcome = segments.length === 0 || segments[0] === "index";
 
-    if (!user) {
-      // Auto-login as guest
-      signInGuest().catch((err) => {
-        console.error("Failed to sign in anonymously:", err);
-      });
-    } else {
-      // User is logged in (guest or real)
+    // 1. Splash Screen (index): Let it run.
+    if (inWelcome) return;
+
+    // 2. Paywall: Let user interact with it.
+    if (inPaywall) return;
+
+    // 3. Authenticated User Logic
+    if (user) {
       const inLinkAccount = segments[0] === "auth" && segments[1] === "link-account";
       const inLogin = segments[0] === "auth" && segments[1] === "login";
+      const inSignup = segments[0] === "auth" && segments[1] === "signup";
 
-      // Allow guests to be in link-account or login, otherwise redirect auth/welcome to tabs
-      const allowedAuthRoutes = user.isAnonymous && (inLinkAccount || inLogin);
+      // If user is NOT anonymous (Meaning they are fully logged in), they shouldn't be in Auth group
+      if (!user.isAnonymous && inAuthGroup) {
+        router.replace("/(tabs)/progress");
+        return;
+      }
 
-      if ((inAuthGroup && !allowedAuthRoutes) || inWelcome) {
+      // If user IS Anonymous, they can be in these screens to upgrade/switch
+      const allowedAuthRoutes = inLinkAccount || inLogin || inSignup;
+
+      // Only redirect if they are in an auth flow they don't need to be in (and not covered above)
+      if (inAuthGroup && !allowedAuthRoutes) {
         router.replace("/(tabs)/progress");
       }
     }
-  }, [user, isLoading, segments]);
+  }, [user, isAuthLoading, segments]);
 
-  if (isLoading) {
+  // Ensure Guest User
+  useEffect(() => {
+    if (!isAuthLoading && !user) {
+      signInGuest().catch(console.error);
+    }
+  }, [isAuthLoading, user]);
+
+  if (isAuthLoading) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" color="#0000ff" />
@@ -53,6 +69,7 @@ function RootLayoutNav() {
         }}
       >
         <Stack.Screen name="index" />
+        <Stack.Screen name="paywall" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="auth" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack>

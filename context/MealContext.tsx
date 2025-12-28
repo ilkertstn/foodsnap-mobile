@@ -6,7 +6,7 @@ import { setLocal } from "@/utils/sync/LocalStorage";
 import { bootstrapSync } from "@/utils/sync/SyncBootstrap";
 import { pushCloud } from "@/utils/sync/SyncService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { Badge, ExerciseEntry, FoodEntry, FoodResult, Goals, Logs, MealType, Profile, WeightEntry } from "../types";
 import { cancelReminders, registerForPushNotificationsAsync, scheduleMealReminders, scheduleWaterReminders, sendImmediateNotification } from "../utils/notifications";
 
@@ -56,6 +56,7 @@ type MealContextType = {
     removeExercise: (date: string, id: string) => void;
     toggleReminder: (type: 'water' | 'meals', enabled: boolean) => Promise<boolean>;
     checkSmartReminders: () => Promise<void>;
+    getTotalMealCount: () => number;
     streaks: {
         water: number;
         log: number;
@@ -525,37 +526,25 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
 
     const clearNewBadge = () => setNewlyUnlockedBadge(null);
 
-    const calculateStreaks = () => {
+    const streaks = useMemo(() => {
         const today = new Date().toISOString().split('T')[0];
-        const sortedDates = Object.keys(logs).sort().reverse();
-
-
         let waterStreak = 0;
         let logStreak = 0;
 
-
-        let currentStreak = 0;
-
         let checkDate = new Date();
-
 
         for (let i = 0; i < 30; i++) {
             const dStr = checkDate.toISOString().split('T')[0];
             const log = logs[dStr];
 
-
             if (log && log.water_ml >= (goals.water || 2000)) {
                 waterStreak++;
             } else if (dStr !== today) {
-
                 break;
             }
-
             checkDate.setDate(checkDate.getDate() - 1);
         }
 
-
-        currentStreak = 0;
         checkDate = new Date();
         for (let i = 0; i < 30; i++) {
             const dStr = checkDate.toISOString().split('T')[0];
@@ -565,18 +554,18 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
             if (mealCount >= 2) {
                 logStreak++;
             } else if (dStr !== today) {
-
                 break;
             }
             checkDate.setDate(checkDate.getDate() - 1);
         }
 
         return { water: waterStreak, log: logStreak };
-    };
+    }, [logs, goals.water]);
 
 
     const evaluateBadges = async () => {
-        const streaks = calculateStreaks();
+        console.log("Evaluate Badges Running");
+        // const streaks = calculateStreaks(); // Removed function call
         const unlockedIds = new Set(profile.unlockedBadges?.map(b => b.badgeId) || []);
         let newBadge: Badge | null = null;
         let updatedProfile = { ...profile };
@@ -587,21 +576,19 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
             let unlocked = false;
             const { condition } = badge;
             if (typeof condition === 'string') continue;
+
             const today = new Date().toISOString().split('T')[0];
 
             if (condition.type === 'count') {
                 if (condition.metric === 'water_log') {
-
                     const daysWithWater = Object.values(logs).filter(l => l.water_ml > 0).length;
                     if (daysWithWater >= condition.count) unlocked = true;
                 }
-
             } else if (condition.type === 'streak_days') {
                 if (condition.metric === 'water_goal' && streaks.water >= condition.days) unlocked = true;
                 if (condition.metric === 'log_streak' && streaks.log >= condition.days) unlocked = true;
 
                 if (condition.metric === 'calorie_goal') {
-
                     let calStreak = 0;
                     let d = new Date();
                     for (let i = 0; i < condition.days + 2; i++) {
@@ -615,6 +602,7 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
                         if (dayLog && cals > 0 && cals <= goals.calories) {
                             calStreak++;
                         } else if (dateStr !== today) {
+                            // If we miss a day other than today (which might be incomplete), break
                             break;
                         }
                         d.setDate(d.getDate() - 1);
@@ -623,7 +611,6 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
                 }
             } else if (condition.type === 'consistency') {
                 if (condition.metric === 'calorie_goal') {
-
                     let hitCount = 0;
                     let d = new Date();
                     for (let i = 0; i < condition.window; i++) {
@@ -646,71 +633,93 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
 
             if (unlocked) {
                 newBadge = badge;
-                updatedProfile.unlockedBadges = [...(updatedProfile.unlockedBadges || []), { badgeId: badge.id, unlockedAt: Date.now() }];
+                // Avoid duplicates using updatedProfile which tracks accumulations in this loop
+                if (!updatedProfile.unlockedBadges?.some(b => b.badgeId === badge.id)) {
+                    updatedProfile.unlockedBadges = [
+                        ...(updatedProfile.unlockedBadges || []),
+                        { badgeId: badge.id, unlockedAt: Date.now() }
+                    ];
+                }
                 unlockedIds.add(badge.id);
             }
         }
 
         if (newBadge) {
+            console.log("Unlocking new badge:", newBadge.id);
             setProfile(updatedProfile);
             setNewlyUnlockedBadge(newBadge);
         }
     };
 
+    const getTotalMealCount = () => {
+        let count = 0;
+        Object.values(logs).forEach(log => {
+            count += log.meals.breakfast.length + log.meals.lunch.length + log.meals.dinner.length + log.meals.snack.length;
+        });
+        return count;
+    };
+
     const checkSmartReminders = async () => {
+        // Respect user settings
+        const reminders = profile.reminders;
+        if (!reminders) return; // If settings not loaded or all off, don't nag.
+
         const today = new Date().toISOString().split('T')[0];
         const summary = getDailySummary(today);
         const currentHour = new Date().getHours();
 
-        if (currentHour >= 14 && currentHour < 20 && summary.consumed.water < 1000) {
+        if (reminders.water && currentHour >= 14 && currentHour < 20 && summary.consumed.water < 1000) {
             await sendImmediateNotification("💧 Drink Water!", "You're behind on your water goal. Grab a glass!");
         }
 
-        if (currentHour >= 20 && currentHour < 22 && summary.consumed.calories < (goals.calories * 0.5)) {
+        if (reminders.meals && currentHour >= 20 && currentHour < 22 && summary.consumed.calories < (goals.calories * 0.5)) {
             await sendImmediateNotification("🍽️ Low Energy?", "You've only eaten 50% of your daily goal. Don't forget dinner!");
         }
     };
 
     useEffect(() => {
-
-        checkSmartReminders();
-    }, []);
+        if (!isLoadingData) {
+            checkSmartReminders();
+        }
+    }, [isLoadingData]);
 
 
     useEffect(() => {
-
-        if (Object.keys(logs).length > 0) {
-            evaluateBadges();
-        }
+        // if (Object.keys(logs).length > 0) {
+        //    evaluateBadges();
+        // }
     }, [logs]);
 
+    const contextValue = useMemo(() => ({
+        profile,
+        updateProfile,
+        goals,
+        updateGoals,
+        logs,
+        weightHistory,
+        addWeightEntry,
+        recentScans,
+        addRecentScan,
+        addEntry,
+        removeEntry,
+        addWater,
+        addExercise,
+        removeExercise,
+        getDailySummary,
+        toggleReminder,
+        checkSmartReminders,
+        getTotalMealCount,
+        streaks,
+        newlyUnlockedBadge,
+        clearNewBadge,
+        showBackupPrompt,
+        dismissBackupPrompt,
+    }), [
+        profile, goals, logs, weightHistory, recentScans, streaks, newlyUnlockedBadge, showBackupPrompt
+    ]);
+
     return (
-        <MealContext.Provider
-            value={{
-                profile,
-                updateProfile,
-                goals,
-                updateGoals,
-                logs,
-                weightHistory,
-                addWeightEntry,
-                recentScans,
-                addRecentScan,
-                addEntry,
-                removeEntry,
-                addWater,
-                addExercise,
-                removeExercise,
-                getDailySummary,
-                toggleReminder,
-                checkSmartReminders,
-                streaks: calculateStreaks(),
-                newlyUnlockedBadge,
-                clearNewBadge,
-                showBackupPrompt,
-                dismissBackupPrompt,
-            }}
-        >
+        <MealContext.Provider value={contextValue}>
             {children}
         </MealContext.Provider>
     );

@@ -1,13 +1,17 @@
+import { useAuth } from "@/context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { BlurView } from "expo-blur";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   Image,
+  InteractionManager,
   Pressable,
   ScrollView,
   StatusBar,
@@ -22,6 +26,7 @@ import { useMeals } from "../../context/MealContext";
 import { FoodResult, MealType } from "../../types";
 import { getAdjustedDate } from "../../utils/date";
 
+
 const { width } = Dimensions.get("window");
 // You can switch this to your local IP
 const API_BASE = "http://192.168.1.11:3000";
@@ -34,7 +39,8 @@ import SuccessModal from "../../components/SuccessModal";
 export default function ScanScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { addEntry, recentScans, addRecentScan } = useMeals();
+  const { user } = useAuth();
+  const { addEntry, recentScans, addRecentScan, getTotalMealCount } = useMeals();
 
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
@@ -43,11 +49,30 @@ export default function ScanScreen() {
   const [result, setResult] = useState<FoodResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<MealType>("lunch");
+  const [navigating, setNavigating] = useState(false);
+
 
   const [isScanning, setIsScanning] = useState(false);
 
   // Success Modal
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+
+  useFocusEffect(
+    useCallback(() => {
+
+      setNavigating(false);
+
+      return () => {
+
+        setShowSuccessModal(false);
+        setLoading(false);
+        setIsScanning(false);
+      };
+    }, [])
+  );
+
+
 
   const grams = useMemo(() => {
     const n = Number(gramsText.trim());
@@ -61,6 +86,14 @@ export default function ScanScreen() {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (perm.status !== "granted") {
       setError("Camera permission not granted.");
+      return;
+    }
+
+    if (user?.isAnonymous && getTotalMealCount() >= 10) {
+      Alert.alert("Limit Reached", "You have used your 10 free guest scans. Please sign up to continue tracking!", [
+        { text: "View Offers", onPress: () => router.push("/paywall") },
+        { text: "Cancel", style: "cancel" }
+      ]);
       return;
     }
 
@@ -167,13 +200,27 @@ export default function ScanScreen() {
     setShowSuccessModal(true);
   };
 
+
   const handleModalClose = () => {
+    if (navigating) return;
+    setNavigating(true);
+
+    // 1) Önce modalı kapat + state'i temizle
     setShowSuccessModal(false);
     setResult(null);
     setImageUri(null);
     setImageBase64(null);
-    router.push("/(tabs)");
+    setError(null);
+    setGramsText("");
+
+    // 2) Modal animasyonları / UI işleri bitsin, sonra route değiştir
+    InteractionManager.runAfterInteractions(() => {
+      router.replace("/(tabs)/dashboard");
+      // Not: Scan screen mount'ta kalabileceği için focus effect zaten navigating'i sıfırlıyor.
+    });
   };
+
+
 
   const handleBarcodeResult = (scannedResult: FoodResult) => {
     setResult(scannedResult);
@@ -207,6 +254,11 @@ export default function ScanScreen() {
           <Text style={styles.headerSubtitle}>
             Snap a photo for instant analysis
           </Text>
+          {user?.isAnonymous && (
+            <Text style={styles.guestLimitText}>
+              Free Guest Scans: {10 - getTotalMealCount()}/10 Remaining
+            </Text>
+          )}
         </View>
 
         <View style={styles.card}>
@@ -463,6 +515,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#64748b",
     marginTop: 4,
+  },
+  guestLimitText: {
+    fontSize: 14,
+    color: "#ef4444",
+    fontWeight: "700",
+    marginTop: 8,
   },
   card: {
     backgroundColor: "white",
