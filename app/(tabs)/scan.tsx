@@ -11,7 +11,6 @@ import {
   Alert,
   Dimensions,
   Image,
-  InteractionManager,
   Pressable,
   ScrollView,
   StatusBar,
@@ -28,8 +27,8 @@ import { getAdjustedDate } from "../../utils/date";
 
 
 const { width } = Dimensions.get("window");
-// You can switch this to your local IP
-const API_BASE = "http://192.168.1.11:3000";
+
+const API_BASE = "http://192.168.1.10:3000";
 
 const MEAL_TYPES: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
 
@@ -205,20 +204,23 @@ export default function ScanScreen() {
     if (navigating) return;
     setNavigating(true);
 
-    // 1) Önce modalı kapat + state'i temizle
     setShowSuccessModal(false);
-    setResult(null);
-    setImageUri(null);
-    setImageBase64(null);
-    setError(null);
-    setGramsText("");
 
-    // 2) Modal animasyonları / UI işleri bitsin, sonra route değiştir
-    InteractionManager.runAfterInteractions(() => {
+    // 1 frame bekle: Modal unmount/anim bitsin
+    requestAnimationFrame(() => {
+      // İstersen state temizliği navigation sonrası bile olabilir
       router.replace("/(tabs)/dashboard");
-      // Not: Scan screen mount'ta kalabileceği için focus effect zaten navigating'i sıfırlıyor.
+
+      // Eğer Scan screen tekrar focus alıyorsa zaten resetliyorsun.
+      // Ama yine de burada temizlemek istersen:
+      setResult(null);
+      setImageUri(null);
+      setImageBase64(null);
+      setError(null);
+      setGramsText("");
     });
   };
+
 
 
 

@@ -508,20 +508,20 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
         const badge = ALL_BADGES.find(b => b.id === badgeId);
         if (!badge) return;
 
-        setProfile(prev => {
+        // Check if already unlocked first
+        if (profile.unlockedBadges?.some(b => b.badgeId === badgeId)) return;
 
-            if (prev.unlockedBadges?.some(b => b.badgeId === badgeId)) return prev;
+        // Update profile
+        setProfile(prev => ({
+            ...prev,
+            unlockedBadges: [
+                ...(prev.unlockedBadges || []),
+                { badgeId, unlockedAt: Date.now() }
+            ]
+        }));
 
-            setNewlyUnlockedBadge(badge);
-
-            return {
-                ...prev,
-                unlockedBadges: [
-                    ...(prev.unlockedBadges || []),
-                    { badgeId, unlockedAt: Date.now() }
-                ]
-            };
-        });
+        // Set newly unlocked badge separately (not inside setProfile callback)
+        setNewlyUnlockedBadge(badge);
     };
 
     const clearNewBadge = () => setNewlyUnlockedBadge(null);

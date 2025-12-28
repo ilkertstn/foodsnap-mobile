@@ -3,7 +3,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AchievementModal from "../../components/AchievementModal";
 import AddExerciseModal from "../../components/AddExerciseModal";
@@ -48,8 +47,7 @@ const MealSection = ({ title, meals, onDelete }: { title: string, meals: FoodEnt
         <View style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>{title}</Text>
             {meals.map((meal, index) => (
-                <Animated.View
-                    entering={FadeInDown.delay(index * 100).springify()}
+                <View
                     key={meal.id}
                     style={styles.mealItem}
                 >
@@ -60,7 +58,7 @@ const MealSection = ({ title, meals, onDelete }: { title: string, meals: FoodEnt
                     <Pressable onPress={() => onDelete(meal.id)} style={styles.deleteButton}>
                         <Ionicons name="trash-outline" size={18} color="#ef4444" />
                     </Pressable>
-                </Animated.View>
+                </View>
             ))}
         </View>
     );

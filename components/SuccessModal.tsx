@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import React, { useEffect } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
-import Animated, { ZoomIn } from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
 interface SuccessModalProps {
     visible: boolean;
@@ -11,18 +11,48 @@ interface SuccessModalProps {
     buttonText?: string;
 }
 
-export default function SuccessModal({ visible, onClose, title, message, buttonText = "Awesome" }: SuccessModalProps) {
-    if (!visible) return null;
+export default function SuccessModal({
+    visible,
+    onClose,
+    title,
+    message,
+    buttonText = "Awesome",
+}: SuccessModalProps) {
+    const scale = useSharedValue(0.92);
+    const opacity = useSharedValue(0);
+
+    useEffect(() => {
+        if (visible) {
+            opacity.value = withTiming(1, { duration: 160 });
+            scale.value = withTiming(1, { duration: 220 });
+        } else {
+            // kapanış animasyonu (istersen)
+            opacity.value = withTiming(0, { duration: 120 });
+            scale.value = withTiming(0.98, { duration: 120 });
+        }
+    }, [visible, opacity, scale]);
+
+    const cardStyle = useAnimatedStyle(() => ({
+        opacity: opacity.value,
+        transform: [{ scale: scale.value }],
+    }));
 
     return (
-        <Modal visible={visible} transparent animationType="fade">
+        <Modal
+            visible={visible}
+            transparent
+            animationType="none" // <- önemli
+            statusBarTranslucent
+            onRequestClose={onClose}
+        >
             <View style={styles.overlay}>
-                <Animated.View entering={ZoomIn.duration(300)} style={styles.container}>
+                <Animated.View style={[styles.container, cardStyle]}>
                     <View style={styles.iconContainer}>
                         <Ionicons name="checkmark-circle" size={48} color="#22c55e" />
                     </View>
                     <Text style={styles.title}>{title}</Text>
                     <Text style={styles.message}>{message}</Text>
+
                     <Pressable onPress={onClose} style={styles.button}>
                         <Text style={styles.buttonText}>{buttonText}</Text>
                     </Pressable>

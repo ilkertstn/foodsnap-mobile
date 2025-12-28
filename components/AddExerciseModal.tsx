@@ -65,6 +65,8 @@ export default function AddExerciseModal({ visible, onClose, onAdd }: AddExercis
         onClose();
     };
 
+    if (!visible) return null;
+
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
             <View style={styles.modalOverlay}>
