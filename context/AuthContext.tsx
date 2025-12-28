@@ -56,7 +56,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         try {
             await signInWithEmailAndPassword(auth, email, pass);
         } catch (e) {
-            console.error("Sign in failed", e);
             throw e;
         }
     };
@@ -74,7 +73,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         try {
             await signInAnonymously(auth);
         } catch (e) {
-            console.error("Guest sign in failed", e);
             throw e;
         }
     };

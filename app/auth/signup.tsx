@@ -1,18 +1,19 @@
 import { useAuth } from "@/context/AuthContext";
+import { getAuthErrorMessage } from "@/utils/authErrors";
 import { LinearGradient } from "expo-linear-gradient";
 import { Link, useRouter } from "expo-router";
 import { useState } from "react";
 import {
     ActivityIndicator,
-    Alert,
     KeyboardAvoidingView,
     Platform,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View
 } from "react-native";
+import CustomAlertModal, { AlertType } from "../../components/CustomAlertModal";
 
 export default function SignUpScreen() {
     const router = useRouter();
@@ -22,9 +23,35 @@ export default function SignUpScreen() {
     const [password, setPassword] = useState("");
     const [isLoading, setIsLoading] = useState(false);
 
+    // Custom Alert State
+    const [alertVisible, setAlertVisible] = useState(false);
+    const [alertConfig, setAlertConfig] = useState<{
+        type: AlertType;
+        title: string;
+        message: string;
+        primaryText?: string;
+        onPrimary: () => void;
+    }>({
+        type: "error",
+        title: "",
+        message: "",
+        onPrimary: () => { },
+    });
+
+    const showCustomAlert = (type: AlertType, title: string, message: string) => {
+        setAlertConfig({
+            type,
+            title,
+            message,
+            primaryText: "OK",
+            onPrimary: () => setAlertVisible(false),
+        });
+        setAlertVisible(true);
+    };
+
     const handleSignUp = async () => {
         if (!email || !password) {
-            Alert.alert("Error", "Please enter both email and password");
+            showCustomAlert("error", "Error", "Please enter both email and password");
             return;
         }
 
@@ -33,7 +60,7 @@ export default function SignUpScreen() {
             await signUp(email.trim(), password);
             // AuthContext will update, redirection happens automatically
         } catch (e: any) {
-            Alert.alert("Sign Up Failed", e.message);
+            showCustomAlert("error", "Sign Up Failed", getAuthErrorMessage(e));
         } finally {
             setIsLoading(false);
         }
@@ -101,7 +128,15 @@ export default function SignUpScreen() {
                     </View>
                 </View>
             </View>
-        </KeyboardAvoidingView>
+            <CustomAlertModal
+                visible={alertVisible}
+                type={alertConfig.type}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                primaryButtonText={alertConfig.primaryText}
+                onPrimaryPress={alertConfig.onPrimary}
+            />
+        </KeyboardAvoidingView >
     );
 }
 

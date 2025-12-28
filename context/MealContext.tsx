@@ -74,6 +74,19 @@ type MealContextType = {
 const MealContext = createContext<MealContextType | undefined>(undefined);
 
 export const MealProvider = ({ children }: { children: React.ReactNode }) => {
+    // Track current user ID reactively using onAuthStateChanged
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+    const [authReady, setAuthReady] = useState(false);
+
+    useEffect(() => {
+        const { onAuthStateChanged } = require("firebase/auth");
+        const unsubscribe = onAuthStateChanged(auth, (user: any) => {
+            setCurrentUserId(user?.uid ?? null);
+            setAuthReady(true);
+        });
+        return () => unsubscribe();
+    }, []);
+
     const [profile, setProfile] = useState<Profile>(DEFAULT_PROFILE);
     const [goals, setGoals] = useState<Goals>(DEFAULT_GOALS);
     const [logs, setLogs] = useState<Logs>({});
@@ -115,8 +128,10 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Initial Sync
     useEffect(() => {
+        if (!authReady) return; // Wait for auth to initialize
+
         const init = async () => {
-            const userId = auth.currentUser?.uid;
+            const userId = currentUserId;
             if (!userId) return;
 
             // Mark that we're loading a new user
@@ -160,7 +175,7 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
             }
         };
 
-        if (auth.currentUser) {
+        if (currentUserId) {
             init();
         } else {
             // No user, reset to defaults
@@ -172,11 +187,11 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
             setRecentScans([]);
             setIsLoadingData(false);
         }
-    }, [auth.currentUser?.uid]);
+    }, [currentUserId, authReady]);
 
     // Unified Persistence: Debounced save to Local + Cloud
     useEffect(() => {
-        const userId = auth.currentUser?.uid;
+        const userId = currentUserId;
         // Skip if loading, no user, or if the current user doesn't match what we loaded
         // (prevents cross-user writes during user switch)
         if (isLoadingData || !userId || lastLoadedUidRef.current !== userId) return;
@@ -200,7 +215,7 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
         }, 3000);
 
         return () => clearTimeout(timer);
-    }, [profile, goals, logs, weightHistory, recentScans, isLoadingData, auth.currentUser?.uid]);
+    }, [profile, goals, logs, weightHistory, recentScans, isLoadingData, currentUserId]);
 
     // Recalculate goals on profile change (Strategy logic kept)
     useEffect(() => {
@@ -253,8 +268,8 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
             if (newProfile.weightKg && newProfile.weightKg !== prev.weightKg) {
                 const today = new Date().toISOString().split('T')[0];
                 setWeightHistory(prevHistory => {
-                    const newHistory = [...prevHistory, { date: today, weight: newProfile.weightKg! }];
-
+                    const filtered = prevHistory.filter(h => h.date !== today);
+                    const newHistory = [...filtered, { date: today, weight: newProfile.weightKg! }];
                     return newHistory.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
                 });
             }

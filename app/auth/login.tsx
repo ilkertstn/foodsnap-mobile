@@ -1,18 +1,19 @@
+import CustomAlertModal, { AlertType } from "@/components/CustomAlertModal";
 import { useAuth } from "@/context/AuthContext";
+import { getAuthErrorMessage } from "@/utils/authErrors";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { Link, useRouter } from "expo-router";
 import { useState } from "react";
 import {
     ActivityIndicator,
-    Alert,
     KeyboardAvoidingView,
     Platform,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View
 } from "react-native";
 
 export default function LoginScreen() {
@@ -23,9 +24,35 @@ export default function LoginScreen() {
     const [password, setPassword] = useState("");
     const [isLoading, setIsLoading] = useState(false);
 
+    // Custom Alert State
+    const [alertVisible, setAlertVisible] = useState(false);
+    const [alertConfig, setAlertConfig] = useState<{
+        type: AlertType;
+        title: string;
+        message: string;
+        primaryText?: string;
+        onPrimary: () => void;
+    }>({
+        type: "error",
+        title: "",
+        message: "",
+        onPrimary: () => { },
+    });
+
+    const showCustomAlert = (type: AlertType, title: string, message: string) => {
+        setAlertConfig({
+            type,
+            title,
+            message,
+            primaryText: "OK",
+            onPrimary: () => setAlertVisible(false),
+        });
+        setAlertVisible(true);
+    };
+
     const handleLogin = async () => {
         if (!email || !password) {
-            Alert.alert("Error", "Please enter both email and password");
+            showCustomAlert("error", "Error", "Please enter both email and password");
             return;
         }
 
@@ -36,7 +63,7 @@ export default function LoginScreen() {
             // But strict redirect for safety:
             // router.replace("/(tabs)/progress"); 
         } catch (e: any) {
-            Alert.alert("Login Failed", e.message);
+            showCustomAlert("error", "Login Failed", getAuthErrorMessage(e));
         } finally {
             setIsLoading(false);
         }
@@ -53,7 +80,7 @@ export default function LoginScreen() {
             await signInGuest();
             router.replace("/(tabs)/progress");
         } catch (e: any) {
-            Alert.alert("Error", "Could not sign in as guest");
+            showCustomAlert("error", "Error", getAuthErrorMessage(e));
         } finally {
             setIsLoading(false);
         }
@@ -65,14 +92,14 @@ export default function LoginScreen() {
             style={styles.container}
         >
             <LinearGradient
-                colors={["#ffffff", "#f0f9ff", "#e0f2fe"]}
+                colors={["#0f172a", "#1e293b", "#334155"]}
                 style={StyleSheet.absoluteFill}
             />
 
             <View style={styles.content}>
                 <View style={styles.header}>
                     <Image
-                        source={require("../../assets/images/icon.png")}
+                        source={require("../../assets/images/foodsnap-logo.png")}
                         style={styles.logo}
                         contentFit="contain"
                     />
@@ -140,9 +167,20 @@ export default function LoginScreen() {
                     </TouchableOpacity>
                 </View>
             </View>
-        </KeyboardAvoidingView>
+
+            <CustomAlertModal
+                visible={alertVisible}
+                type={alertConfig.type}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                primaryButtonText={alertConfig.primaryText}
+                onPrimaryPress={alertConfig.onPrimary}
+            />
+        </KeyboardAvoidingView >
     );
 }
+
+
 
 const styles = StyleSheet.create({
     container: {
@@ -158,20 +196,20 @@ const styles = StyleSheet.create({
         marginBottom: 40,
     },
     logo: {
-        width: 80,
-        height: 80,
-        marginBottom: 20,
-        borderRadius: 20,
+        width: 120,
+        height: 120,
+        marginBottom: 24,
+        borderRadius: 24, // Slight rounding if the logo is square
     },
     title: {
         fontSize: 32,
         fontWeight: "800",
-        color: "#1e293b",
+        color: "#f8fafc",
         marginBottom: 8,
     },
     subtitle: {
         fontSize: 16,
-        color: "#64748b",
+        color: "#cbd5e1",
     },
     form: {
         gap: 20,
@@ -182,33 +220,44 @@ const styles = StyleSheet.create({
     label: {
         fontSize: 14,
         fontWeight: "600",
-        color: "#475569",
+        color: "#e2e8f0",
     },
     input: {
-        backgroundColor: "white",
+        backgroundColor: "rgba(255,255,255,0.1)", // Glass effect
         padding: 16,
         borderRadius: 12,
         fontSize: 16,
-        color: "#1e293b",
+        color: "#f8fafc",
         borderWidth: 1,
-        borderColor: "#e2e8f0",
+        borderColor: "rgba(255,255,255,0.2)",
     },
     button: {
-        backgroundColor: "#2563eb",
+        backgroundColor: "#6366f1", // More vivid indigo to match bg
         padding: 18,
         borderRadius: 16,
         alignItems: "center",
-        shadowColor: "#2563eb",
+        shadowColor: "#6366f1",
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
+        shadowOpacity: 0.3,
         shadowRadius: 8,
         elevation: 4,
         marginTop: 8,
+    },
+    ghostButton: {
+        backgroundColor: "transparent",
+        marginTop: 0,
+        shadowOpacity: 0,
+        elevation: 0,
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.2)",
     },
     buttonText: {
         color: "white",
         fontSize: 16,
         fontWeight: "700",
+    },
+    ghostButtonText: {
+        color: "#e0e7ff",
     },
     footer: {
         flexDirection: "row",
@@ -216,38 +265,30 @@ const styles = StyleSheet.create({
         marginTop: 16,
     },
     footerText: {
-        color: "#64748b",
+        color: "#cbd5e1",
         fontSize: 14,
     },
     link: {
-        color: "#2563eb",
+        color: "#818cf8",
         fontSize: 14,
         fontWeight: "700",
     },
     divider: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginVertical: 10,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 16,
+        marginVertical: 12,
     },
     line: {
         flex: 1,
         height: 1,
-        backgroundColor: '#cbd5e1',
+        backgroundColor: "rgba(255,255,255,0.2)",
     },
     orText: {
-        marginHorizontal: 16,
-        color: '#94a3b8',
-        fontSize: 12,
-        fontWeight: '600'
+        color: "#94a3b8",
+        fontWeight: "600",
+        fontSize: 14,
     },
-    ghostButton: {
-        backgroundColor: 'transparent',
-        borderWidth: 2,
-        borderColor: '#cbd5e1',
-        shadowOpacity: 0,
-        elevation: 0,
-    },
-    ghostButtonText: {
-        color: '#64748b',
-    }
 });
+
+

@@ -4,8 +4,9 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import CustomAlertModal, { AlertType } from "../../components/CustomAlertModal";
 import SuccessModal from "../../components/SuccessModal";
 import { ALL_BADGES } from "../../constants/badges";
 import { useAuth } from "../../context/AuthContext";
@@ -99,42 +100,76 @@ export default function Profile() {
 
     const [showSuccessModal, setShowSuccessModal] = useState(false);
 
+    // Custom Alert State
+    const [alertVisible, setAlertVisible] = useState(false);
+    const [alertConfig, setAlertConfig] = useState<{
+        type: AlertType;
+        title: string;
+        message: string;
+        primaryText?: string;
+        secondaryText?: string;
+        onPrimary: () => void;
+        onSecondary?: () => void;
+    }>({
+        type: "info",
+        title: "",
+        message: "",
+        onPrimary: () => { },
+    });
+
+    const showCustomAlert = (
+        type: AlertType,
+        title: string,
+        message: string,
+        primaryText: string,
+        onPrimary: () => void,
+        secondaryText?: string,
+        onSecondary?: () => void
+    ) => {
+        setAlertConfig({
+            type,
+            title,
+            message,
+            primaryText,
+            onPrimary,
+            secondaryText,
+            onSecondary
+        });
+        setAlertVisible(true);
+    };
+
     const handleSignOut = async () => {
         // Fallback for user state
         const isAnon = user?.isAnonymous ?? true; // Assume guest if undefined to show warning
 
         if (isAnon) {
-            Alert.alert(
+            showCustomAlert(
+                "warning",
                 "Warning",
                 "You are currently a Guest. If you sign out now, you will lose your data permanently unless you link your account first.",
-                [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                        text: "Sign Out Anyway",
-                        style: "destructive",
-                        onPress: async () => {
-                            await signOut();
-                            // router.dismissAll(); // Caused POP_TO_TOP error
-                            router.replace("/");
-                        }
-                    }
-                ]
+                "Sign Out Anyway",
+                async () => {
+                    setAlertVisible(false);
+                    await signOut();
+                    // Force navigation to prevent loops or confusion
+                    router.replace("/");
+                },
+                "Cancel",
+                () => setAlertVisible(false)
             );
         } else {
-            Alert.alert(
+            showCustomAlert(
+                "warning",
                 "Sign Out",
                 "Are you sure you want to sign out?",
-                [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                        text: "Sign Out",
-                        style: "destructive",
-                        onPress: async () => {
-                            await signOut();
-                            router.replace("/auth/login");
-                        }
-                    }
-                ]
+                "Sign Out",
+                async () => {
+                    setAlertVisible(false);
+                    await signOut();
+                    router.replace("/auth/login");
+                },
+                "Cancel",
+                () => setAlertVisible(false)
             );
         }
     };
@@ -726,6 +761,17 @@ export default function Profile() {
                 title="Profile Saved"
                 message="Your goals have been updated based on your new profile settings."
                 onClose={() => setShowSuccessModal(false)}
+            />
+
+            <CustomAlertModal
+                visible={alertVisible}
+                type={alertConfig.type}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                primaryButtonText={alertConfig.primaryText}
+                onPrimaryPress={alertConfig.onPrimary}
+                secondaryButtonText={alertConfig.secondaryText}
+                onSecondaryPress={alertConfig.onSecondary}
             />
         </View >
     );
