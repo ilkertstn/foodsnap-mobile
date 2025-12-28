@@ -6,13 +6,33 @@ import { useMeals } from "../context/MealContext";
 import { getAdjustedDate } from "../utils/date";
 
 export default function WaterTracker() {
-    const { getDailySummary, addWater } = useMeals();
+    const { getDailySummary, addWater, logs, goals } = useMeals();
     const today = getAdjustedDate();
     const summary = getDailySummary(today);
 
     const current = summary.consumed.water;
     const goal = current + summary.remaining.water;
     const percentage = Math.min(100, Math.round((current / goal) * 100));
+    const remaining = Math.max(0, goal - current);
+
+    // Calculate Streak
+    const streak = React.useMemo(() => {
+        let count = 0;
+        const todayDate = new Date();
+        // Check past 30 days
+        for (let i = 1; i <= 30; i++) {
+            const d = new Date(todayDate);
+            d.setDate(d.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+            const log = logs[dateStr];
+            if (log && log.water_ml >= (goals.water || 2500)) {
+                count++;
+            } else {
+                break;
+            }
+        }
+        return count;
+    }, [logs, goals]);
 
     const [showCustom, setShowCustom] = React.useState(false);
     const [customAmount, setCustomAmount] = React.useState("");
@@ -34,14 +54,29 @@ export default function WaterTracker() {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <View style={styles.titleRow}>
-                    <Ionicons name="water" size={20} color="#3b82f6" />
-                    <Text style={styles.title}>Water Intake</Text>
+                <View style={styles.headerTop}>
+                    <View style={styles.titleRow}>
+                        <Ionicons name="water" size={20} color="#3b82f6" />
+                        <Text style={styles.title}>Water Intake</Text>
+                    </View>
+                    {streak > 0 && (
+                        <View style={styles.streakBadge}>
+                            <Ionicons name="flame" size={14} color="#f97316" />
+                            <Text style={styles.streakText}>{streak} Day Streak</Text>
+                        </View>
+                    )}
                 </View>
-                <Text style={styles.value}>
-                    <Text style={styles.current}>{current}</Text>
-                    <Text style={styles.goal}>/{goal} ml</Text>
-                </Text>
+                <View style={styles.statsRow}>
+                    <Text style={styles.value}>
+                        <Text style={styles.current}>{current}</Text>
+                        <Text style={styles.goal}>/{goal} ml</Text>
+                    </Text>
+                    {remaining > 0 ? (
+                        <Text style={styles.remainingText}>{remaining} ml to go</Text>
+                    ) : (
+                        <Text style={styles.completedText}>Goal Reached! 🎉</Text>
+                    )}
+                </View>
             </View>
 
             <View style={styles.progressContainer}>
@@ -130,10 +165,44 @@ const styles = StyleSheet.create({
         elevation: 4,
     },
     header: {
+        marginBottom: 12,
+        gap: 8,
+    },
+    headerTop: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
-        marginBottom: 12,
+    },
+    statsRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "baseline",
+    },
+    streakBadge: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        backgroundColor: "#fff7ed",
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: "#ffedd5",
+    },
+    streakText: {
+        fontSize: 12,
+        color: "#ca8a04",
+        fontWeight: "700",
+    },
+    remainingText: {
+        fontSize: 13,
+        color: "#64748b",
+        fontWeight: "500",
+    },
+    completedText: {
+        fontSize: 13,
+        color: "#16a34a",
+        fontWeight: "600",
     },
     titleRow: {
         flexDirection: "row",

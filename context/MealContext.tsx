@@ -1,14 +1,21 @@
+// Wait, I put setLocal in LocalStorage.ts.
 import { ALL_BADGES } from "@/constants/badges";
+import { auth } from "@/firebaseConfig";
+import { LocalData } from "@/types/sync"; // Check types/sync.ts
+import { setLocal } from "@/utils/sync/LocalStorage";
+import { bootstrapSync } from "@/utils/sync/SyncBootstrap";
+import { pushCloud } from "@/utils/sync/SyncService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { Badge, ExerciseEntry, FoodEntry, Goals, Logs, MealType, Profile, WeightEntry } from "../types";
-import { cancelReminders, registerForPushNotificationsAsync, scheduleMealReminders, scheduleWaterReminders } from "../utils/notifications";
+import { Badge, ExerciseEntry, FoodEntry, FoodResult, Goals, Logs, MealType, Profile, WeightEntry } from "../types";
+import { cancelReminders, registerForPushNotificationsAsync, scheduleMealReminders, scheduleWaterReminders, sendImmediateNotification } from "../utils/notifications";
 
 const STORAGE_KEYS = {
     PROFILE: "foodsnap_profile",
     GOALS: "foodsnap_goals",
     LOGS: "foodsnap_logs",
     WEIGHT_HISTORY: "foodsnap_weight_history",
+    RECENT_SCANS: "foodsnap_recent_scans",
 };
 
 const DEFAULT_PROFILE: Profile = {
@@ -39,14 +46,24 @@ type MealContextType = {
     updateGoals: (g: Partial<Goals>) => void;
     logs: Logs;
     weightHistory: WeightEntry[];
+    addWeightEntry: (weight: number) => void;
+    recentScans: FoodResult[];
+    addRecentScan: (scan: FoodResult) => void;
     addEntry: (date: string, mealType: MealType, entry: Omit<FoodEntry, "id" | "createdAt">) => void;
     removeEntry: (date: string, mealType: MealType, id: string) => void;
     addWater: (date: string, amount: number) => void;
     addExercise: (date: string, exercise: Omit<ExerciseEntry, "id" | "createdAt">) => void;
     removeExercise: (date: string, id: string) => void;
     toggleReminder: (type: 'water' | 'meals', enabled: boolean) => Promise<boolean>;
+    checkSmartReminders: () => Promise<void>;
+    streaks: {
+        water: number;
+        log: number;
+    };
     newlyUnlockedBadge: Badge | null;
     clearNewBadge: () => void;
+    showBackupPrompt: boolean;
+    dismissBackupPrompt: () => void;
     getDailySummary: (dateStr?: string) => {
         consumed: { calories: number; protein: number; carbs: number; fat: number; water: number };
         burned: number;
@@ -61,69 +78,140 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
     const [goals, setGoals] = useState<Goals>(DEFAULT_GOALS);
     const [logs, setLogs] = useState<Logs>({});
     const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
+    const [recentScans, setRecentScans] = useState<FoodResult[]>([]);
     const [newlyUnlockedBadge, setNewlyUnlockedBadge] = useState<Badge | null>(null);
+    const [showBackupPrompt, setShowBackupPrompt] = useState(false);
 
-    useEffect(() => {
-        loadData();
-    }, []);
+    const checkBackupTrigger = async () => {
+        if (!auth.currentUser?.isAnonymous) return;
 
+        try {
+            const hasSeen = await AsyncStorage.getItem("foodsnap_has_seen_backup_prompt");
+            if (hasSeen === "true") return;
+
+            const countStr = await AsyncStorage.getItem("foodsnap_action_count");
+            const count = parseInt(countStr || "0", 10) + 1;
+            await AsyncStorage.setItem("foodsnap_action_count", count.toString());
+
+            if (count >= 3) {
+                setShowBackupPrompt(true);
+            }
+        } catch (e) {
+            console.error("Error checking backup trigger", e);
+        }
+    };
+
+    const dismissBackupPrompt = async () => {
+        setShowBackupPrompt(false);
+        try {
+            await AsyncStorage.setItem("foodsnap_has_seen_backup_prompt", "true");
+        } catch (e) {
+            console.error("Error setting has seen prompt", e);
+        }
+    };
+
+    const [isLoadingData, setIsLoadingData] = useState(true);
+    const lastLoadedUidRef = React.useRef<string | null>(null);
+
+    // Initial Sync
     useEffect(() => {
-        saveData(STORAGE_KEYS.PROFILE, profile);
+        const init = async () => {
+            const userId = auth.currentUser?.uid;
+            if (!userId) return;
+
+            // Mark that we're loading a new user
+            lastLoadedUidRef.current = null;
+
+            // Reset state first to prevent leaking old user data
+            setIsLoadingData(true);
+            setProfile(DEFAULT_PROFILE);
+            setGoals(DEFAULT_GOALS);
+            setLogs({});
+            setWeightHistory([]);
+            setRecentScans([]);
+
+            try {
+                const emptyData: LocalData = {
+                    schemaVersion: 1,
+                    updatedAt: Date.now(),
+                    profile: DEFAULT_PROFILE,
+                    goals: DEFAULT_GOALS,
+                    logs: {},
+                    weightHistory: [],
+                    recentScans: [],
+                };
+
+                const data = await bootstrapSync(userId, () => emptyData);
+
+                if (data) {
+                    setProfile(data.profile);
+                    setGoals(data.goals);
+                    setLogs(data.logs);
+                    setWeightHistory(data.weightHistory);
+                    setRecentScans(data.recentScans);
+                }
+
+                // Mark that this user's data is now loaded
+                lastLoadedUidRef.current = userId;
+            } catch (e) {
+                console.error("Bootstrap failed", e);
+            } finally {
+                setIsLoadingData(false);
+            }
+        };
+
+        if (auth.currentUser) {
+            init();
+        } else {
+            // No user, reset to defaults
+            lastLoadedUidRef.current = null;
+            setProfile(DEFAULT_PROFILE);
+            setGoals(DEFAULT_GOALS);
+            setLogs({});
+            setWeightHistory([]);
+            setRecentScans([]);
+            setIsLoadingData(false);
+        }
+    }, [auth.currentUser?.uid]);
+
+    // Unified Persistence: Debounced save to Local + Cloud
+    useEffect(() => {
+        const userId = auth.currentUser?.uid;
+        // Skip if loading, no user, or if the current user doesn't match what we loaded
+        // (prevents cross-user writes during user switch)
+        if (isLoadingData || !userId || lastLoadedUidRef.current !== userId) return;
+
+        const timer = setTimeout(async () => {
+            // Double-check uid hasn't changed during the debounce
+            if (lastLoadedUidRef.current !== userId) return;
+
+            const currentData: LocalData = {
+                schemaVersion: 1,
+                updatedAt: Date.now(),
+                profile: { ...profile, unlockedBadges: profile.unlockedBadges || [] },
+                goals,
+                logs,
+                weightHistory,
+                recentScans,
+            };
+
+            await setLocal(userId, currentData);
+            await pushCloud(currentData);
+        }, 3000);
+
+        return () => clearTimeout(timer);
+    }, [profile, goals, logs, weightHistory, recentScans, isLoadingData, auth.currentUser?.uid]);
+
+    // Recalculate goals on profile change (Strategy logic kept)
+    useEffect(() => {
         if (goals.strategy === "auto") {
             recalculateGoals(profile);
         }
-    }, [profile]);
+    }, [profile.weightKg, profile.heightCm, profile.age, profile.gender, profile.activity, profile.goal]);
 
-    useEffect(() => {
-        saveData(STORAGE_KEYS.GOALS, goals);
-    }, [goals]);
-
-    useEffect(() => {
-        saveData(STORAGE_KEYS.LOGS, logs);
-    }, [logs]);
-
-    const loadData = async () => {
-        try {
-            const [p, g, l, w] = await Promise.all([
-                AsyncStorage.getItem(STORAGE_KEYS.PROFILE),
-                AsyncStorage.getItem(STORAGE_KEYS.GOALS),
-                AsyncStorage.getItem(STORAGE_KEYS.LOGS),
-                AsyncStorage.getItem(STORAGE_KEYS.WEIGHT_HISTORY),
-            ]);
-
-            if (p) {
-                const loadedProfile = JSON.parse(p);
-                setProfile(loadedProfile);
-
-                // If we have a profile but no weight history, initialize it with current weight
-                if ((!w || JSON.parse(w).length === 0) && loadedProfile.weightKg) {
-                    const today = new Date().toISOString().split('T')[0];
-                    const initialHistory = [{ date: today, weight: loadedProfile.weightKg }];
-                    setWeightHistory(initialHistory);
-                    AsyncStorage.setItem(STORAGE_KEYS.WEIGHT_HISTORY, JSON.stringify(initialHistory));
-                }
-            } else {
-                // First time load?
-            }
-
-            if (g) setGoals((prev) => ({ ...prev, ...JSON.parse(g) }));
-            if (l) setLogs(JSON.parse(l));
-            if (w) setWeightHistory(JSON.parse(w));
-        } catch (e) {
-            console.error("Failed to load data", e);
-        }
-    };
-
-    const saveData = async (key: string, value: any) => {
-        try {
-            await AsyncStorage.setItem(key, JSON.stringify(value));
-        } catch (e) {
-            console.error(`Failed to save ${key}`, e);
-        }
-    };
+    // Removed old loadData/saveData functions and individual effects
 
     const recalculateGoals = (p: Profile) => {
-        // Harris-Benedict BMR
         let bmr = 0;
         if (p.gender === "male") {
             bmr = 88.362 + (13.397 * p.weightKg) + (4.799 * p.heightCm) - (5.677 * p.age);
@@ -131,7 +219,6 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
             bmr = 447.593 + (9.247 * p.weightKg) + (3.098 * p.heightCm) - (4.330 * p.age);
         }
 
-        // Activity Multiplier
         const multipliers = {
             sedentary: 1.2,
             light: 1.375,
@@ -139,13 +226,11 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
         };
         let tdee = bmr * multipliers[p.activity];
 
-        // Goal Adjustment
         if (p.goal === "lose") tdee -= 500;
         if (p.goal === "gain") tdee += 500;
 
         const newCalories = Math.round(tdee);
 
-        // Simple Macro Split: 30% P, 35% C, 35% F
         const pG = Math.round((newCalories * 0.3) / 4);
         const cG = Math.round((newCalories * 0.35) / 4);
         const fG = Math.round((newCalories * 0.35) / 9);
@@ -160,26 +245,39 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
         }));
     };
 
-    useEffect(() => {
-        AsyncStorage.setItem(STORAGE_KEYS.WEIGHT_HISTORY, JSON.stringify(weightHistory));
-    }, [weightHistory]);
-
     const updateProfile = (newProfile: Partial<Profile>) => {
         setProfile((prev) => {
             const updated = { ...prev, ...newProfile };
 
-            // If weight changed, add to history
+
             if (newProfile.weightKg && newProfile.weightKg !== prev.weightKg) {
                 const today = new Date().toISOString().split('T')[0];
                 setWeightHistory(prevHistory => {
                     const newHistory = [...prevHistory, { date: today, weight: newProfile.weightKg! }];
-                    // Sort by date
+
                     return newHistory.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
                 });
             }
 
-            AsyncStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(updated));
             return updated;
+        });
+    };
+
+    const addWeightEntry = (weight: number) => {
+        const today = new Date().toISOString().split('T')[0];
+        setWeightHistory(prev => {
+            const filtered = prev.filter(e => e.date !== today);
+            return [...filtered, { date: today, weight }].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        });
+        updateProfile({ weightKg: weight });
+    };
+
+    const addRecentScan = (scan: FoodResult) => {
+        setRecentScans(prev => {
+
+            const filtered = prev.filter(p => p.meal_name.toLowerCase() !== scan.meal_name.toLowerCase());
+
+            return [scan, ...filtered].slice(0, 10);
         });
     };
 
@@ -213,7 +311,8 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
             };
         });
 
-        // Check for "first_log" badge immediately
+        checkBackupTrigger();
+
         if (!profile.unlockedBadges?.some(b => b.badgeId === "first_log")) {
             unlockBadge("first_log");
         }
@@ -258,16 +357,13 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
             };
         });
 
-        // Check for water badge (using current state + amount approximation)
-        // Accessing logs from state might be slightly stale if rapid updates occur, but acceptable for this check
+
         const currentLog = logs[date];
         const currentWater = currentLog?.water_ml || 0;
 
         if (currentWater + amount >= 2000) {
             if (!profile.unlockedBadges?.some(b => b.badgeId === "water_2l")) {
-                // Determine if we should unlock. 
-                // Since this runs after setLogs, hopefully referencing state is fine enough.
-                // Or we can just trust the condition met.
+
                 unlockBadge("water_2l");
             }
         }
@@ -344,13 +440,12 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
 
     const toggleReminder = async (type: 'water' | 'meals', enabled: boolean) => {
         if (enabled) {
-            // Check permissions first
+
             const token = await registerForPushNotificationsAsync();
             if (!token && !__DEV__) {
-                // In prod we need token/permission, in dev/simulator we might skip token check for local notifs
-                // actually registerForPushNotificationsAsync requests permission even if token fails on sim
+
             }
-            // we rely on the permission request inside registerForPushNotificationsAsync
+
         }
 
         const currentReminders = profile.reminders || {
@@ -398,7 +493,7 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
         if (!badge) return;
 
         setProfile(prev => {
-            // double check inside setter to be safe against race conditions
+
             if (prev.unlockedBadges?.some(b => b.badgeId === badgeId)) return prev;
 
             setNewlyUnlockedBadge(badge);
@@ -415,87 +510,160 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
 
     const clearNewBadge = () => setNewlyUnlockedBadge(null);
 
-    const checkDailyGoal = (dayLog: typeof logs[string], currentGoals: Goals, type: 'calories' | 'protein') => {
-        if (!dayLog) return false;
+    const calculateStreaks = () => {
+        const today = new Date().toISOString().split('T')[0];
+        const sortedDates = Object.keys(logs).sort().reverse();
 
-        let consumed = 0;
-        let burned = 0;
 
-        if (dayLog.exercises) {
-            burned = dayLog.exercises.reduce((acc, curr) => acc + curr.caloriesBurned, 0);
-        }
+        let waterStreak = 0;
+        let logStreak = 0;
 
-        const meals = Object.values(dayLog.meals).flat();
-        if (type === 'calories') {
-            consumed = meals.reduce((acc, curr) => acc + curr.calories_kcal, 0);
-            const net = consumed - burned;
-            // Allow 10% variance or strict? Let's say +/- 100kcal or just under goal?
-            // User prompt implied "tutturdun" (hit the target). 
-            // Common app logic: (Goal - 200) <= Net <= (Goal + 200)
-            return net >= (currentGoals.calories - 200) && net <= (currentGoals.calories + 200);
-        } else if (type === 'protein') {
-            consumed = meals.reduce((acc, curr) => acc + curr.macros_g.protein, 0);
-            return consumed >= currentGoals.protein;
-        }
-        return false;
-    };
 
-    const evaluateBadges = () => {
-        const unlockedIds = new Set(profile.unlockedBadges?.map(b => b.badgeId) || []);
+        let currentStreak = 0;
 
-        ALL_BADGES.forEach(badge => {
-            if (unlockedIds.has(badge.id)) return;
+        let checkDate = new Date();
 
-            let earned = false;
-            const today = new Date().toISOString().split('T')[0];
 
-            if (badge.condition === "water_2l") {
-                // Already checked in addWater but good to re-check
-                if ((logs[today]?.water_ml || 0) >= 2000) earned = true;
-            } else if (badge.condition === "first_log") {
-                // Already checked
-            } else if (badge.condition === "streak_7") {
-                let streak = 0;
-                // Check last 7 days including today? Or 7 days COMPLETED?
-                // Let's check last 7 days up to yesterday + today if complete?
-                // Simpler: Check last 7 days.
-                for (let i = 0; i < 7; i++) {
-                    const d = new Date();
-                    d.setDate(d.getDate() - i);
-                    const dateStr = d.toISOString().split('T')[0];
-                    if (checkDailyGoal(logs[dateStr], goals, 'calories')) streak++;
-                    else break;
-                }
-                if (streak >= 7) earned = true;
-            } else if (badge.condition === "protein_streak_3") {
-                let streak = 0;
-                for (let i = 0; i < 3; i++) {
-                    const d = new Date();
-                    d.setDate(d.getDate() - i);
-                    const dateStr = d.toISOString().split('T')[0];
-                    if (checkDailyGoal(logs[dateStr], goals, 'protein')) streak++;
-                    else break;
-                }
-                if (streak >= 3) earned = true;
-            } else if (badge.condition === "activity_3_per_week") {
-                let activeDays = 0;
-                for (let i = 0; i < 7; i++) {
-                    const d = new Date();
-                    d.setDate(d.getDate() - i);
-                    const dateStr = d.toISOString().split('T')[0];
-                    const dayLog = logs[dateStr];
-                    if (dayLog && dayLog.exercises && dayLog.exercises.length > 0) activeDays++;
-                }
-                if (activeDays >= 3) earned = true;
+        for (let i = 0; i < 30; i++) {
+            const dStr = checkDate.toISOString().split('T')[0];
+            const log = logs[dStr];
+
+
+            if (log && log.water_ml >= (goals.water || 2000)) {
+                waterStreak++;
+            } else if (dStr !== today) {
+
+                break;
             }
 
-            if (earned) unlockBadge(badge.id);
-        });
+            checkDate.setDate(checkDate.getDate() - 1);
+        }
+
+
+        currentStreak = 0;
+        checkDate = new Date();
+        for (let i = 0; i < 30; i++) {
+            const dStr = checkDate.toISOString().split('T')[0];
+            const log = logs[dStr];
+            const mealCount = log ? (log.meals.breakfast.length + log.meals.lunch.length + log.meals.dinner.length + log.meals.snack.length) : 0;
+
+            if (mealCount >= 2) {
+                logStreak++;
+            } else if (dStr !== today) {
+
+                break;
+            }
+            checkDate.setDate(checkDate.getDate() - 1);
+        }
+
+        return { water: waterStreak, log: logStreak };
     };
 
-    // Evaluate badges whenever logs change
+
+    const evaluateBadges = async () => {
+        const streaks = calculateStreaks();
+        const unlockedIds = new Set(profile.unlockedBadges?.map(b => b.badgeId) || []);
+        let newBadge: Badge | null = null;
+        let updatedProfile = { ...profile };
+
+        for (const badge of ALL_BADGES) {
+            if (unlockedIds.has(badge.id)) continue;
+
+            let unlocked = false;
+            const { condition } = badge;
+            if (typeof condition === 'string') continue;
+            const today = new Date().toISOString().split('T')[0];
+
+            if (condition.type === 'count') {
+                if (condition.metric === 'water_log') {
+
+                    const daysWithWater = Object.values(logs).filter(l => l.water_ml > 0).length;
+                    if (daysWithWater >= condition.count) unlocked = true;
+                }
+
+            } else if (condition.type === 'streak_days') {
+                if (condition.metric === 'water_goal' && streaks.water >= condition.days) unlocked = true;
+                if (condition.metric === 'log_streak' && streaks.log >= condition.days) unlocked = true;
+
+                if (condition.metric === 'calorie_goal') {
+
+                    let calStreak = 0;
+                    let d = new Date();
+                    for (let i = 0; i < condition.days + 2; i++) {
+                        const dateStr = d.toISOString().split('T')[0];
+                        const dayLog = logs[dateStr];
+                        const cals = dayLog ? (Object.values(dayLog.meals.breakfast).reduce((a, b) => a + b.calories_kcal, 0) +
+                            Object.values(dayLog.meals.lunch).reduce((a, b) => a + b.calories_kcal, 0) +
+                            Object.values(dayLog.meals.dinner).reduce((a, b) => a + b.calories_kcal, 0) +
+                            Object.values(dayLog.meals.snack).reduce((a, b) => a + b.calories_kcal, 0)) : 0;
+
+                        if (dayLog && cals > 0 && cals <= goals.calories) {
+                            calStreak++;
+                        } else if (dateStr !== today) {
+                            break;
+                        }
+                        d.setDate(d.getDate() - 1);
+                    }
+                    if (calStreak >= condition.days) unlocked = true;
+                }
+            } else if (condition.type === 'consistency') {
+                if (condition.metric === 'calorie_goal') {
+
+                    let hitCount = 0;
+                    let d = new Date();
+                    for (let i = 0; i < condition.window; i++) {
+                        const dateStr = d.toISOString().split('T')[0];
+                        const dayLog = logs[dateStr];
+
+                        const cals = dayLog ? (
+                            [...dayLog.meals.breakfast, ...dayLog.meals.lunch, ...dayLog.meals.dinner, ...dayLog.meals.snack]
+                                .reduce((acc, item) => acc + item.calories_kcal, 0)
+                        ) : 0;
+
+                        if (cals > 0 && cals <= goals.calories) {
+                            hitCount++;
+                        }
+                        d.setDate(d.getDate() - 1);
+                    }
+                    if (hitCount >= condition.days) unlocked = true;
+                }
+            }
+
+            if (unlocked) {
+                newBadge = badge;
+                updatedProfile.unlockedBadges = [...(updatedProfile.unlockedBadges || []), { badgeId: badge.id, unlockedAt: Date.now() }];
+                unlockedIds.add(badge.id);
+            }
+        }
+
+        if (newBadge) {
+            setProfile(updatedProfile);
+            setNewlyUnlockedBadge(newBadge);
+        }
+    };
+
+    const checkSmartReminders = async () => {
+        const today = new Date().toISOString().split('T')[0];
+        const summary = getDailySummary(today);
+        const currentHour = new Date().getHours();
+
+        if (currentHour >= 14 && currentHour < 20 && summary.consumed.water < 1000) {
+            await sendImmediateNotification("💧 Drink Water!", "You're behind on your water goal. Grab a glass!");
+        }
+
+        if (currentHour >= 20 && currentHour < 22 && summary.consumed.calories < (goals.calories * 0.5)) {
+            await sendImmediateNotification("🍽️ Low Energy?", "You've only eaten 50% of your daily goal. Don't forget dinner!");
+        }
+    };
+
     useEffect(() => {
-        // Debounce could be good but for now simple effect
+
+        checkSmartReminders();
+    }, []);
+
+
+    useEffect(() => {
+
         if (Object.keys(logs).length > 0) {
             evaluateBadges();
         }
@@ -510,6 +678,9 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
                 updateGoals,
                 logs,
                 weightHistory,
+                addWeightEntry,
+                recentScans,
+                addRecentScan,
                 addEntry,
                 removeEntry,
                 addWater,
@@ -517,8 +688,12 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
                 removeExercise,
                 getDailySummary,
                 toggleReminder,
+                checkSmartReminders,
+                streaks: calculateStreaks(),
                 newlyUnlockedBadge,
                 clearNewBadge,
+                showBackupPrompt,
+                dismissBackupPrompt,
             }}
         >
             {children}

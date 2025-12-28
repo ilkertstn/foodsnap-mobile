@@ -57,7 +57,7 @@ export default function WelcomeScreen() {
   };
 
   const handleGetStarted = () => {
-    router.replace("/(tabs)/scan");
+    router.push("/auth/login");
   };
 
   const scrollHandler = useAnimatedScrollHandler((event) => {

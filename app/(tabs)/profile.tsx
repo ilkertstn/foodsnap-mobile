@@ -1,11 +1,14 @@
+import { auth } from "@/firebaseConfig";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
+import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import SuccessModal from "../../components/SuccessModal";
 import { ALL_BADGES } from "../../constants/badges";
+import { useAuth } from "../../context/AuthContext";
 import { useMeals } from "../../context/MealContext";
 
 const SectionHeader = ({ title, icon }: { title: string; icon: keyof typeof Ionicons.glyphMap }) => (
@@ -68,10 +71,25 @@ const SelectionModal = ({
 
 export default function Profile() {
     const insets = useSafeAreaInsets();
+    const router = useRouter();
     const { profile, updateProfile, goals, updateGoals, toggleReminder } = useMeals();
+    const { signOut, user } = useAuth(); // Import auth
 
     const [localProfile, setLocalProfile] = useState(profile);
     const [localGoals, setLocalGoals] = useState(goals);
+
+    // Form state to handle string inputs (allowing empty strings, decimals etc)
+    const [formProfile, setFormProfile] = useState({
+        age: String(profile.age),
+        heightCm: String(profile.heightCm),
+        weightKg: String(profile.weightKg),
+        calories: String(goals.calories),
+        protein: String(goals.protein),
+        carbs: String(goals.carbs),
+        fat: String(goals.fat),
+        water: goals.water ? String(goals.water) : "",
+    });
+
     const [isEditing, setIsEditing] = useState(false);
 
     const [showActivityModal, setShowActivityModal] = useState(false);
@@ -81,48 +99,138 @@ export default function Profile() {
 
     const [showSuccessModal, setShowSuccessModal] = useState(false);
 
+    const handleSignOut = async () => {
+        // Fallback for user state
+        const isAnon = user?.isAnonymous ?? true; // Assume guest if undefined to show warning
 
+        if (isAnon) {
+            Alert.alert(
+                "Warning",
+                "You are currently a Guest. If you sign out now, you will lose your data permanently unless you link your account first.",
+                [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                        text: "Sign Out Anyway",
+                        style: "destructive",
+                        onPress: async () => {
+                            await signOut();
+                            // router.dismissAll(); // Caused POP_TO_TOP error
+                            router.replace("/");
+                        }
+                    }
+                ]
+            );
+        } else {
+            Alert.alert(
+                "Sign Out",
+                "Are you sure you want to sign out?",
+                [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                        text: "Sign Out",
+                        style: "destructive",
+                        onPress: async () => {
+                            await signOut();
+                            router.replace("/auth/login");
+                        }
+                    }
+                ]
+            );
+        }
+    };
+
+
+
+    // Sync local state from context when NOT editing (display mode should always show latest)
+    React.useEffect(() => {
+        if (!isEditing) {
+            setLocalProfile(profile);
+            setLocalGoals(goals);
+            setFormProfile({
+                age: String(profile.age),
+                heightCm: String(profile.heightCm),
+                weightKg: String(profile.weightKg),
+                calories: String(goals.calories),
+                protein: String(goals.protein),
+                carbs: String(goals.carbs),
+                fat: String(goals.fat),
+                water: goals.water ? String(goals.water) : "",
+            });
+        }
+    }, [profile, goals, isEditing]);
+
+    // When entering edit mode, re-sync to ensure we're editing the latest values
     React.useEffect(() => {
         if (isEditing) {
             setLocalProfile(profile);
             setLocalGoals(goals);
+            setFormProfile({
+                age: String(profile.age),
+                heightCm: String(profile.heightCm),
+                weightKg: String(profile.weightKg),
+                calories: String(goals.calories),
+                protein: String(goals.protein),
+                carbs: String(goals.carbs),
+                fat: String(goals.fat),
+                water: goals.water ? String(goals.water) : "",
+            });
         }
+    }, [isEditing]);
 
+    React.useEffect(() => {
         if (goals.strategy === "auto" && isEditing) {
+            // Use formProfile values parsed to numbers, fallback to 0
+            const age = Number(formProfile.age) || 0;
+            const weight = Number(formProfile.weightKg) || 0;
+            const height = Number(formProfile.heightCm) || 0;
+
             let bmr = 0;
             if (localProfile.gender === "male") {
-                bmr = 88.362 + (13.397 * localProfile.weightKg) + (4.799 * localProfile.heightCm) - (5.677 * localProfile.age);
+                bmr = 88.362 + (13.397 * weight) + (4.799 * height) - (5.677 * age);
             } else {
-                bmr = 447.593 + (9.247 * localProfile.weightKg) + (3.098 * localProfile.heightCm) - (4.330 * localProfile.age);
+                bmr = 447.593 + (9.247 * weight) + (3.098 * height) - (4.330 * age);
             }
 
-            const multipliers = {
+            const multipliers: Record<string, number> = {
                 sedentary: 1.2,
                 light: 1.375,
                 active: 1.55,
             };
-            let tdee = bmr * multipliers[localProfile.activity];
+            let tdee = bmr * (multipliers[localProfile.activity] || 1.2);
 
             if (localProfile.goal === "lose") tdee -= 500;
             if (localProfile.goal === "gain") tdee += 500;
 
-            const newCalories = Math.round(tdee);
-
+            const newCalories = Math.round(tdee) > 0 ? Math.round(tdee) : 0;
 
             const pG = Math.round((newCalories * 0.3) / 4);
             const cG = Math.round((newCalories * 0.35) / 4);
             const fG = Math.round((newCalories * 0.35) / 9);
 
-            setLocalGoals({
+            // Update form strings for goals ONLY derived from calculation
+            setFormProfile(prev => ({
+                ...prev,
+                calories: String(newCalories),
+                protein: String(pG),
+                carbs: String(cG),
+                fat: String(fG),
+            }));
+
+            // Also update localGoals for non-string usages if any
+            setLocalGoals(prev => ({
+                ...prev,
                 calories: newCalories,
                 protein: pG,
                 carbs: cG,
                 fat: fG,
-                water: localGoals.water || 2500,
-                strategy: "auto"
-            });
+                water: prev.water // Preserve existing water number
+            }));
         }
-    }, [isEditing, profile, goals, localProfile.age, localProfile.activity, localProfile.gender, localProfile.goal, localProfile.heightCm, localProfile.weightKg, goals.strategy, localGoals.water]);
+    }, [
+        isEditing, goals.strategy,
+        formProfile.age, formProfile.weightKg, formProfile.heightCm, // Listen to string changes
+        localProfile.gender, localProfile.activity, localProfile.goal
+    ]);
 
     const handleSave = async () => {
         // Check if reminders changed
@@ -133,13 +241,31 @@ export default function Profile() {
             await toggleReminder('meals', localProfile.reminders?.meals ?? false);
         }
 
-        updateProfile(localProfile);
+        // Parse strings to numbers for save
+        const finalProfile = {
+            ...localProfile,
+            age: Number(formProfile.age) || 0,
+            heightCm: Number(formProfile.heightCm) || 0,
+            weightKg: Number(formProfile.weightKg) || 0,
+        };
 
-        if (localGoals.strategy === "manual") {
-            updateGoals(localGoals);
+        const finalGoals = {
+            ...localGoals,
+            calories: Number(formProfile.calories) || 0,
+            protein: Number(formProfile.protein) || 0,
+            carbs: Number(formProfile.carbs) || 0,
+            fat: Number(formProfile.fat) || 0,
+            water: Number(formProfile.water) || 2500, // Default if empty
+            strategy: goals.strategy
+        };
+
+        updateProfile(finalProfile);
+
+        if (goals.strategy === "manual") {
+            updateGoals(finalGoals);
         } else {
             // If switching back to auto, ensure strategy is set
-            updateGoals({ strategy: "auto" });
+            updateGoals({ ...finalGoals, strategy: "auto" });
         }
         setIsEditing(false);
         setShowSuccessModal(true);
@@ -208,6 +334,32 @@ export default function Profile() {
                         </Pressable>
                     </View>
 
+                    {auth.currentUser?.isAnonymous && (
+                        <View style={[styles.card, { backgroundColor: '#eff6ff', borderColor: '#3b82f6', borderWidth: 1 }]}>
+                            <View style={styles.sectionHeader}>
+                                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                    <Ionicons name="cloud-upload" size={24} color="#3b82f6" />
+                                    <Text style={styles.sectionTitle}>Backup Your Data</Text>
+                                </View>
+                            </View>
+                            <Text style={{ color: '#64748b', marginBottom: 16 }}>
+                                You are using a temporary guest account. Create an account to save your progress and access it on other devices.
+                            </Text>
+                            <Pressable
+                                style={{ backgroundColor: '#3b82f6', padding: 12, borderRadius: 12, alignItems: 'center', marginBottom: 8 }}
+                                onPress={() => router.push("/auth/link-account")}
+                            >
+                                <Text style={{ color: 'white', fontWeight: 'bold' }}>Create Account & Sync</Text>
+                            </Pressable>
+                            <Pressable
+                                style={{ padding: 12, borderRadius: 12, alignItems: 'center' }}
+                                onPress={() => router.push("/auth/login")}
+                            >
+                                <Text style={{ color: '#3b82f6', fontWeight: 'bold' }}>Existing User? Log In</Text>
+                            </Pressable>
+                        </View>
+                    )}
+
                     <View style={styles.card}>
                         <SectionHeader title="Personal Details" icon="person" />
 
@@ -215,22 +367,22 @@ export default function Profile() {
                             <View style={styles.formGrid}>
                                 <InputField
                                     label="Age"
-                                    value={String(localProfile.age)}
-                                    onChange={t => setLocalProfile({ ...localProfile, age: Number(t) })}
+                                    value={formProfile.age}
+                                    onChange={t => setFormProfile({ ...formProfile, age: t })}
                                     placeholder="30"
                                     numeric
                                 />
                                 <InputField
                                     label="Height (cm)"
-                                    value={String(localProfile.heightCm)}
-                                    onChange={t => setLocalProfile({ ...localProfile, heightCm: Number(t) })}
+                                    value={formProfile.heightCm}
+                                    onChange={t => setFormProfile({ ...formProfile, heightCm: t })}
                                     placeholder="175"
                                     numeric
                                 />
                                 <InputField
                                     label="Weight (kg)"
-                                    value={String(localProfile.weightKg)}
-                                    onChange={t => setLocalProfile({ ...localProfile, weightKg: Number(t) })}
+                                    value={formProfile.weightKg}
+                                    onChange={t => setFormProfile({ ...formProfile, weightKg: t })}
                                     placeholder="75"
                                     numeric
                                 />
@@ -460,29 +612,29 @@ export default function Profile() {
                             <View style={styles.formGrid}>
                                 <InputField
                                     label="Daily Calories"
-                                    value={String(localGoals.calories)}
-                                    onChange={t => setLocalGoals({ ...localGoals, calories: Number(t) })}
+                                    value={formProfile.calories}
+                                    onChange={t => setFormProfile({ ...formProfile, calories: t })}
                                     placeholder="2000"
                                     numeric
                                 />
                                 <InputField
                                     label="Protein (g)"
-                                    value={String(localGoals.protein)}
-                                    onChange={t => setLocalGoals({ ...localGoals, protein: Number(t) })}
+                                    value={formProfile.protein}
+                                    onChange={t => setFormProfile({ ...formProfile, protein: t })}
                                     placeholder="150"
                                     numeric
                                 />
                                 <InputField
                                     label="Carbs (g)"
-                                    value={String(localGoals.carbs)}
-                                    onChange={t => setLocalGoals({ ...localGoals, carbs: Number(t) })}
+                                    value={formProfile.carbs}
+                                    onChange={t => setFormProfile({ ...formProfile, carbs: t })}
                                     placeholder="200"
                                     numeric
                                 />
                                 <InputField
                                     label="Fat (g)"
-                                    value={String(localGoals.fat)}
-                                    onChange={t => setLocalGoals({ ...localGoals, fat: Number(t) })}
+                                    value={formProfile.fat}
+                                    onChange={t => setFormProfile({ ...formProfile, fat: t })}
                                     placeholder="65"
                                     numeric
                                 />
@@ -522,8 +674,8 @@ export default function Profile() {
                                 <Text style={[styles.sectionTitle, { fontSize: 16 }]}>Hydration Goal</Text>
                                 <InputField
                                     label="Daily Water (ml)"
-                                    value={localGoals.water ? String(localGoals.water) : ""}
-                                    onChange={t => setLocalGoals({ ...localGoals, water: t === "" ? 0 : Number(t) })}
+                                    value={formProfile.water}
+                                    onChange={t => setFormProfile({ ...formProfile, water: t })}
                                     placeholder="2500"
                                     numeric
                                 />
@@ -537,6 +689,7 @@ export default function Profile() {
                                 <Ionicons name="trophy" size={20} color="#f59e0b" />
                                 <Text style={styles.sectionTitle}>Achievements</Text>
                             </View>
+
                         </View>
 
                         <View style={styles.badgesGrid}>
@@ -554,6 +707,17 @@ export default function Profile() {
                         </View>
                     </View>
 
+                    {/* Redundant Test FB Write button removed previous step? No I am replacing content at line 653-656 */}
+                    <Pressable
+                        onPress={handleSignOut}
+                        style={[styles.signOutButton, { opacity: 1 }]}
+                    >
+                        <Ionicons name={user?.isAnonymous ? "refresh-circle-outline" : "log-out-outline"} size={20} color="#ef4444" />
+                        <Text style={styles.signOutText}>
+                            {user?.isAnonymous ? "Reset Session & Clear Data" : "Sign Out"}
+                        </Text>
+                    </Pressable>
+
                 </ScrollView>
             </KeyboardAvoidingView>
 
@@ -563,7 +727,7 @@ export default function Profile() {
                 message="Your goals have been updated based on your new profile settings."
                 onClose={() => setShowSuccessModal(false)}
             />
-        </View>
+        </View >
     );
 }
 
@@ -824,23 +988,37 @@ const styles = StyleSheet.create({
         opacity: 0.5,
     },
     badgeIcon: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        backgroundColor: "#fef3c7",
-        justifyContent: 'center',
+        width: 60,
+        height: 60,
+        backgroundColor: '#fef3c7',
+        borderRadius: 30,
         alignItems: 'center',
-        borderWidth: 2,
-        borderColor: "#fcd34d",
+        justifyContent: 'center',
     },
     badgeIconLocked: {
-        backgroundColor: "#f1f5f9",
-        borderColor: "#cbd5e1",
+        backgroundColor: '#e2e8f0',
     },
     badgeText: {
         fontSize: 12,
-        fontWeight: "600",
-        color: "#1e293b",
-        textAlign: "center",
+        textAlign: 'center',
+        color: '#64748b',
+        fontWeight: '500',
+    },
+    signOutButton: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        padding: 16,
+        backgroundColor: "#fee2e2",
+        borderRadius: 16,
+        marginBottom: 24,
+    },
+    signOutText: {
+        fontSize: 16,
+        fontWeight: "700",
+        color: "#ef4444",
     },
 });
+
+

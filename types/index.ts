@@ -11,12 +11,19 @@ export type FoodResult = {
     quantity_basis?: "100g" | "serving";
 };
 
+export type BadgeCondition =
+    | { type: 'count'; metric: 'water_log' | 'meal_log' | 'weight_log'; count: number }
+    | { type: 'streak_days'; metric: 'water_goal' | 'calorie_goal' | 'protein_goal' | 'log_streak'; days: number }
+    | { type: 'consistency'; metric: 'calorie_goal'; days: number; window: number } // e.g. 5 days in window of 7
+    | { type: 'value'; metric: 'weight_loss_kg'; value: number }
+    | string;
+
 export type Badge = {
     id: string;
     title: string;
     description: string;
     icon: string; // Ionicons name
-    condition: "water_2l" | "streak_7" | "protein_streak_3" | "activity_3_per_week" | "first_log";
+    condition: BadgeCondition;
 };
 
 export type Profile = {

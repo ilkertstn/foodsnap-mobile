@@ -34,7 +34,7 @@ import SuccessModal from "../../components/SuccessModal";
 export default function ScanScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { addEntry } = useMeals();
+  const { addEntry, recentScans, addRecentScan } = useMeals();
 
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
@@ -163,6 +163,7 @@ export default function ScanScreen() {
       imageUri: imageUri || undefined,
     });
 
+    if (result) addRecentScan(result);
     setShowSuccessModal(true);
   };
 
@@ -272,6 +273,33 @@ export default function ScanScreen() {
             </View>
           </View>
         </View>
+
+        {/* Recent Scans */}
+        {!imageUri && !result && recentScans.length > 0 && (
+          <View style={{ marginBottom: 24 }}>
+            <Text style={styles.sectionTitle}>Recent Scans</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 20 }}>
+              {recentScans.map((scan, index) => (
+                <Pressable
+                  key={index}
+                  style={styles.recentCard}
+                  onPress={() => {
+                    setResult(scan);
+                    setSelectedCategory(scan.category);
+                  }}
+                >
+                  <View style={styles.recentIcon}>
+                    <Ionicons name="fast-food" size={20} color="#3b82f6" />
+                  </View>
+                  <View>
+                    <Text style={styles.recentName} numberOfLines={1}>{scan.meal_name}</Text>
+                    <Text style={styles.recentCals}>{Math.round(scan.calories_kcal)} kcal</Text>
+                  </View>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {imageUri && (
           <Animated.View entering={FadeInDown.springify()} style={styles.imageCard}>
@@ -726,4 +754,37 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#1e293b",
   },
+  recentCard: {
+    backgroundColor: 'white',
+    padding: 12,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    width: 160,
+    shadowColor: "#64748b",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  recentIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recentName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 2,
+  },
+  recentCals: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '500',
+  }
 });

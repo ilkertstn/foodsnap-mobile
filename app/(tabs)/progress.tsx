@@ -27,36 +27,62 @@ export default function ProgressScreen() {
     const insets = useSafeAreaInsets();
     const { weightHistory, logs, goals } = useMeals();
 
-    // Prepare Weight Data
+    // Prepare Weight Data (Last 7 Days with Fill-Forward)
     const weightData = useMemo(() => {
         if (weightHistory.length === 0) return null;
 
-        // Get last 6 entries
-        const recentHistory = weightHistory.slice(-6);
-
-        return {
-            labels: recentHistory.map(e => {
-                const date = new Date(e.date);
-                return `${date.getDate()}/${date.getMonth() + 1}`;
-            }),
-            datasets: [{
-                data: recentHistory.map(e => e.weight)
-            }]
-        };
-    }, [weightHistory]);
-
-
-    const calorieData = useMemo(() => {
         const labels = [];
         const data = [];
+        const today = new Date();
 
-        // Show Today first, then go backwards
-        for (let i = 0; i <= 6; i++) {
+        // Sort history by date just in case
+        const sortedHistory = [...weightHistory].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        // Find last known weight before the 7-day window starts
+        let lastKnownWeight = sortedHistory[0].weight;
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+
+        // Optimization: Find the most recent weight before or on sevenDaysAgo
+        const preWindowEntry = sortedHistory.findLast(e => new Date(e.date) < sevenDaysAgo);
+        if (preWindowEntry) lastKnownWeight = preWindowEntry.weight;
+
+        for (let i = 6; i >= 0; i--) {
             const d = new Date();
             d.setDate(d.getDate() - i);
             const dateStr = d.toISOString().split('T')[0];
 
-            labels.push(i === 0 ? "Today" : `${d.getDate()}`);
+            labels.push(`${d.getDate()}/${d.getMonth() + 1}`);
+
+            // Check if we have an entry for this exact day
+            const exactEntry = sortedHistory.find(e => e.date === dateStr);
+            if (exactEntry) {
+                lastKnownWeight = exactEntry.weight;
+            }
+
+            data.push(lastKnownWeight);
+        }
+
+        return {
+            labels,
+            datasets: [{ data }]
+        };
+    }, [weightHistory]);
+
+
+    const { calorieData, weeklyAverage } = useMemo(() => {
+        const labels = [];
+        const data = [];
+        let totalWeekCalories = 0;
+        let daysWithData = 0;
+
+        // Show Today first, then go backwards
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+
+            labels.push(`${d.getDate()}`);
 
             const dayLog = logs[dateStr];
             let totalCals = 0;
@@ -64,13 +90,20 @@ export default function ProgressScreen() {
                 Object.values(dayLog.meals).flat().forEach(meal => {
                     totalCals += meal.calories_kcal;
                 });
+                if (totalCals > 0) daysWithData++;
             }
+            totalWeekCalories += totalCals;
             data.push(totalCals);
         }
 
+        const avg = daysWithData > 0 ? Math.round(totalWeekCalories / daysWithData) : 0;
+
         return {
-            labels, // [Today, 26, 25...]
-            datasets: [{ data }]
+            calorieData: {
+                labels, // [20, 21, ..., Today]
+                datasets: [{ data }]
+            },
+            weeklyAverage: avg
         };
     }, [logs]);
 
@@ -89,18 +122,25 @@ export default function ProgressScreen() {
                 {/* Weight Chart */}
                 <View style={styles.card}>
                     <View style={styles.cardHeader}>
-                        <Ionicons name="body" size={20} color="#3b82f6" />
-                        <Text style={styles.cardTitle}>Weight Trend</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Ionicons name="body" size={20} color="#3b82f6" />
+                            <Text style={styles.cardTitle}>Weight Trend</Text>
+                        </View>
+                        {weightData && (
+                            <Text style={styles.subtitle}>Last 7 Days</Text>
+                        )}
                     </View>
 
                     {weightData ? (
                         <LineChart
                             data={weightData}
-                            width={screenWidth - 64}
+                            width={screenWidth - 80}
                             height={220}
                             chartConfig={chartConfig}
                             bezier
                             style={styles.chart}
+                            withDots={true}
+                            withInnerLines={false}
                         />
                     ) : (
                         <View style={styles.emptyState}>
@@ -113,25 +153,36 @@ export default function ProgressScreen() {
                 {/* Calorie Chart */}
                 <View style={styles.card}>
                     <View style={styles.cardHeader}>
-                        <Ionicons name="flame" size={20} color="#f97316" />
-                        <Text style={styles.cardTitle}>Calorie Intake</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Ionicons name="flame" size={20} color="#f97316" />
+                            <Text style={styles.cardTitle}>Calorie Intake</Text>
+                        </View>
+                        <View style={styles.avgBadge}>
+                            <Text style={styles.avgLabel}>Weekly Avg:</Text>
+                            <Text style={styles.avgValue}>{weeklyAverage} kcal</Text>
+                        </View>
                     </View>
                     <BarChart
                         data={calorieData}
-                        width={screenWidth - 64}
+                        width={screenWidth - 80}
                         height={220}
                         yAxisLabel=""
                         yAxisSuffix=""
                         chartConfig={{
                             ...chartConfig,
                             color: (opacity = 1) => `rgba(249, 115, 22, ${opacity})`,
-                            propsForDots: { r: "4", stroke: "#f97316" }
+                            propsForDots: { r: "4", stroke: "#f97316" },
+                            barPercentage: 0.7,
                         }}
                         style={styles.chart}
                         showValuesOnTopOfBars
+                        withInnerLines={false}
                     />
                     <View style={styles.goalLine}>
-                        <Text style={styles.goalText}>Daily Goal: {goals.calories} kcal</Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                            <Text style={styles.goalText}>Daily Goal: {goals.calories} kcal</Text>
+                            <Text style={styles.goalText}>Vs Avg: {weeklyAverage - goals.calories > 0 ? '+' : ''}{weeklyAverage - goals.calories}</Text>
+                        </View>
                     </View>
                 </View>
             </ScrollView>
@@ -182,7 +233,6 @@ const styles = StyleSheet.create({
         color: "#1e293b",
     },
     chart: {
-        marginRight: 8, // slight adjustment for chart labels
         borderRadius: 16,
     },
     emptyState: {
@@ -206,10 +256,36 @@ const styles = StyleSheet.create({
         padding: 8,
         backgroundColor: "#fff7ed",
         borderRadius: 8,
+        alignSelf: 'stretch',
     },
     goalText: {
         color: "#f97316",
         fontSize: 12,
         fontWeight: "600",
-    }
+    },
+    subtitle: {
+        fontSize: 12,
+        color: "#94a3b8",
+        marginLeft: 'auto',
+    },
+    avgBadge: {
+        marginLeft: 'auto',
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        gap: 4,
+        backgroundColor: '#fff7ed',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    avgLabel: {
+        fontSize: 11,
+        color: '#f97316',
+        fontWeight: '500',
+    },
+    avgValue: {
+        fontSize: 13,
+        color: '#c2410c',
+        fontWeight: '700',
+    },
 });

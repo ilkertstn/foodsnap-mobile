@@ -71,7 +71,7 @@ const MealSection = ({ title, meals, onDelete }: { title: string, meals: FoodEnt
 export default function Dashboard() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
-    const { getDailySummary, logs, removeEntry, goals, addExercise, removeExercise } = useMeals();
+    const { getDailySummary, logs, removeEntry, goals, addExercise, removeExercise, streaks } = useMeals();
 
 
     const [selectedDate, setSelectedDate] = useState(getAdjustedDate());
@@ -154,6 +154,30 @@ export default function Dashboard() {
                     </View>
                 </View>
 
+
+                {/* Streak Banner */}
+                <View style={styles.streakContainer}>
+                    <View style={styles.streakItem}>
+                        <Ionicons name="flame" size={20} color="#f59e0b" />
+                        <Text style={styles.streakText}>
+                            {streaks.log} Day Log Streak
+                        </Text>
+                    </View>
+                    {/* Progress Hint (if logs < 2 today) */}
+                    {(() => {
+                        const today = new Date().toISOString().split('T')[0];
+                        const log = logs[today];
+                        const mealCount = log ? (log.meals.breakfast.length + log.meals.lunch.length + log.meals.dinner.length + log.meals.snack.length) : 0;
+                        if (mealCount < 2) {
+                            return (
+                                <Text style={styles.streakHint}>
+                                    Logging {2 - mealCount} more meal{2 - mealCount > 1 ? 's' : ''} keeps it going!
+                                </Text>
+                            );
+                        }
+                        return <Text style={styles.streakHint}>Streak safe for today! ✅</Text>;
+                    })()}
+                </View>
 
                 {/* Active Calories Card */}
                 <View style={styles.activeCard}>
@@ -261,6 +285,33 @@ const styles = StyleSheet.create({
     content: {
         padding: 20,
         paddingBottom: 40,
+    },
+    streakContainer: {
+        backgroundColor: "#fff7ed",
+        marginHorizontal: 0, // content has padding 20
+        marginBottom: 24,
+        padding: 12,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: "#ffedd5",
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+    },
+    streakItem: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+    },
+    streakText: {
+        fontSize: 14,
+        fontWeight: "700",
+        color: "#d97706",
+    },
+    streakHint: {
+        fontSize: 12,
+        color: "#d97706",
+        fontWeight: "500",
     },
     header: {
         flexDirection: "row",

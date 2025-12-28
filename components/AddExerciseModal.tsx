@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useMeals } from "../context/MealContext";
 
 type AddExerciseModalProps = {
@@ -9,53 +9,59 @@ type AddExerciseModalProps = {
     onAdd: (exercise: { type: string; durationMinutes: number; caloriesBurned: number }) => void;
 };
 
-const EXERCISE_TYPES = [
-    { label: "Walking", met: 3.5, icon: "walk" },
-    { label: "Running", met: 8.0, icon: "footsteps" },
-    { label: "Cycling", met: 6.0, icon: "bicycle" },
-    { label: "Custom", met: 0, icon: "barbell" },
+
+
+const EXERCISES = [
+    { name: "Walking (Brisk)", met: 3.8 },
+    { name: "Running (Jog)", met: 7.0 },
+    { name: "Running (Fast)", met: 11.0 },
+    { name: "Cycling (Leisure)", met: 4.0 },
+    { name: "Cycling (Vigorous)", met: 8.0 },
+    { name: "Swimming", met: 6.0 },
+    { name: "Weight Lifting", met: 3.5 },
+    { name: "Yoga", met: 2.5 },
+    { name: "HIIT", met: 8.0 },
 ];
 
 export default function AddExerciseModal({ visible, onClose, onAdd }: AddExerciseModalProps) {
     const { profile } = useMeals();
-    const [selectedType, setSelectedType] = useState(EXERCISE_TYPES[0]);
     const [duration, setDuration] = useState("");
     const [calories, setCalories] = useState("");
 
-    const calculateCalories = (minutes: number, type: typeof EXERCISE_TYPES[0]) => {
-        if (type.label === "Custom" || !minutes) return;
-        // Formula: MET * Weight(kg) * (Duration/60)
-        const burned = Math.round(type.met * profile.weightKg * (minutes / 60));
-        setCalories(String(burned));
-    };
 
-    const handleDurationChange = (text: string) => {
-        setDuration(text);
-        calculateCalories(Number(text), selectedType);
-    };
+    const [manual, setManual] = useState(false);
+    const [name, setName] = useState(EXERCISES[0].name);
 
-    const handleTypeSelect = (type: typeof EXERCISE_TYPES[0]) => {
-        setSelectedType(type);
-        if (duration) {
-            if (type.label === "Custom") {
-                setCalories(""); // Clear for custom
+
+
+    useEffect(() => {
+        if (!manual) {
+            const weight = profile.weightKg || 70;
+            const hours = (parseInt(duration) || 0) / 60;
+            const met = EXERCISES.find(e => e.name === name)?.met || 4;
+
+            if (hours > 0) {
+                const burned = Math.round(met * weight * hours);
+                setCalories(burned.toString());
             } else {
-                calculateCalories(Number(duration), type);
+                setCalories("");
             }
         }
-    };
+    }, [duration, name, manual, profile.weightKg]);
+
+
+
 
     const handleAdd = () => {
         if (!duration || !calories) return;
         onAdd({
-            type: selectedType.label,
+            type: manual ? (name || "Exercise") : name,
             durationMinutes: Number(duration),
             caloriesBurned: Number(calories),
         });
-        // Reset
         setDuration("");
         setCalories("");
-        setSelectedType(EXERCISE_TYPES[0]);
+
         onClose();
     };
 
@@ -71,53 +77,65 @@ export default function AddExerciseModal({ visible, onClose, onAdd }: AddExercis
                         </Pressable>
                     </View>
 
-                    <View style={styles.typesGrid}>
-                        {EXERCISE_TYPES.map((type) => (
-                            <Pressable
-                                key={type.label}
-                                style={[
-                                    styles.typeButton,
-                                    selectedType.label === type.label && styles.typeButtonSelected
-                                ]}
-                                onPress={() => handleTypeSelect(type)}
-                            >
-                                <Ionicons
-                                    name={type.icon as any}
-                                    size={24}
-                                    color={selectedType.label === type.label ? "white" : "#64748b"}
-                                />
-                                <Text style={[
-                                    styles.typeLabel,
-                                    selectedType.label === type.label && styles.typeLabelSelected
-                                ]}>
-                                    {type.label}
-                                </Text>
-                            </Pressable>
-                        ))}
+
+                    <View style={styles.inputContainer}>
+                        <Text style={styles.label}>Exercise Name</Text>
+                        {!manual ? (
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipContainer}>
+                                {EXERCISES.map((ex) => (
+                                    <Pressable
+                                        key={ex.name}
+                                        style={[styles.chip, name === ex.name && styles.chipActive]}
+                                        onPress={() => setName(ex.name)}
+                                    >
+                                        <Text style={[styles.chipText, name === ex.name && styles.chipTextActive]}>
+                                            {ex.name}
+                                        </Text>
+                                    </Pressable>
+                                ))}
+                            </ScrollView>
+                        ) : (
+                            <TextInput
+                                style={styles.input}
+                                placeholder="e.g. Running, Yoga"
+                                value={name}
+                                onChangeText={setName}
+                            />
+                        )}
+                        <Pressable onPress={() => {
+                            setManual(!manual);
+                            if (!manual) setName("");
+                            else setName(EXERCISES[0].name);
+                            setCalories("");
+                        }}>
+                            <Text style={styles.switchModeText}>
+                                {manual ? "Switch to Auto-Calculate" : "Switch to Manual Input (Custom)"}
+                            </Text>
+                        </Pressable>
                     </View>
 
                     <View style={styles.inputContainer}>
-                        <Text style={styles.inputLabel}>Duration (minutes)</Text>
+                        <Text style={styles.label}>Duration (minutes)</Text>
                         <TextInput
                             style={styles.input}
                             value={duration}
-                            onChangeText={handleDurationChange}
+                            onChangeText={setDuration}
                             placeholder="30"
                             keyboardType="numeric"
                         />
                     </View>
 
                     <View style={styles.inputContainer}>
-                        <Text style={styles.inputLabel}>Calories Burned (kcal)</Text>
+                        <Text style={styles.label}>Calories Burned (kcal)</Text>
                         <TextInput
                             style={styles.input}
                             value={calories}
                             onChangeText={setCalories}
                             placeholder="150"
                             keyboardType="numeric"
-                            editable={selectedType.label === "Custom"} // Auto-calc implies read-only for presets, but user might want to override? Let's make it editable always actually, but maybe grayed out hint.
+                            editable={manual}
                         />
-                        {selectedType.label !== "Custom" && (
+                        {!manual && duration && (
                             <Text style={styles.helperText}>Calculated based on your weight ({profile.weightKg}kg)</Text>
                         )}
                     </View>
@@ -158,36 +176,11 @@ const styles = StyleSheet.create({
         fontWeight: "700",
         color: "#1e293b",
     },
-    typesGrid: {
-        flexDirection: "row",
-        gap: 12,
-        marginBottom: 24,
-        justifyContent: "space-between",
-    },
-    typeButton: {
-        flex: 1,
-        alignItems: "center",
-        padding: 12,
-        borderRadius: 12,
-        backgroundColor: "#f1f5f9",
-        gap: 8,
-    },
-    typeButtonSelected: {
-        backgroundColor: "#3b82f6",
-    },
-    typeLabel: {
-        fontSize: 12,
-        fontWeight: "600",
-        color: "#64748b",
-    },
-    typeLabelSelected: {
-        color: "white",
-    },
     inputContainer: {
         marginBottom: 16,
         gap: 8,
     },
-    inputLabel: {
+    label: {
         fontSize: 14,
         fontWeight: "600",
         color: "#64748b",
@@ -201,9 +194,39 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: "#1e293b",
     },
+    chipContainer: {
+        marginBottom: 12,
+        height: 50,
+    },
+    chip: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: "#f1f5f9",
+        marginRight: 8,
+        height: 36,
+        justifyContent: "center",
+    },
+    chipActive: {
+        backgroundColor: "#3b82f6",
+    },
+    chipText: {
+        fontSize: 14,
+        color: "#64748b",
+        fontWeight: "500",
+    },
+    chipTextActive: {
+        color: "white",
+    },
     helperText: {
         fontSize: 12,
         color: "#94a3b8",
+    },
+    switchModeText: {
+        fontSize: 14,
+        color: "#3b82f6",
+        fontWeight: "600",
+        marginTop: 4,
     },
     addButton: {
         backgroundColor: "#3b82f6",

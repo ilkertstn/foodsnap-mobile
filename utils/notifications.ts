@@ -98,6 +98,17 @@ export async function scheduleMealReminders(times: { breakfast: string, lunch: s
     }
 }
 
+export async function sendImmediateNotification(title: string, body: string) {
+    await Notifications.scheduleNotificationAsync({
+        content: {
+            title,
+            body,
+            data: { type: 'smart_reminder' },
+        },
+        trigger: null, // Immediate
+    });
+}
+
 export async function cancelReminders(type: 'water' | 'meal' | 'all') {
     if (type === 'all') {
         await Notifications.cancelAllScheduledNotificationsAsync();
