@@ -27,23 +27,23 @@ export default function ProgressScreen() {
     const insets = useSafeAreaInsets();
     const { weightHistory, logs, goals } = useMeals();
 
-    // Prepare Weight Data (Last 7 Days with Fill-Forward)
+
     const weightData = useMemo(() => {
         if (weightHistory.length === 0) return null;
 
         const labels = [];
         const data = [];
-        const today = new Date();
 
-        // Sort history by date just in case
+
+
         const sortedHistory = [...weightHistory].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-        // Find last known weight before the 7-day window starts
+
         let lastKnownWeight = sortedHistory[0].weight;
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
 
-        // Optimization: Find the most recent weight before or on sevenDaysAgo
+
         const preWindowEntry = sortedHistory.findLast(e => new Date(e.date) < sevenDaysAgo);
         if (preWindowEntry) lastKnownWeight = preWindowEntry.weight;
 
@@ -54,7 +54,7 @@ export default function ProgressScreen() {
 
             labels.push(`${d.getDate()}/${d.getMonth() + 1}`);
 
-            // Check if we have an entry for this exact day
+
             const exactEntry = sortedHistory.find(e => e.date === dateStr);
             if (exactEntry) {
                 lastKnownWeight = exactEntry.weight;
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
     card: {
         backgroundColor: "white",
         borderRadius: 24,
-        padding: 16, // reduced padding for charts
+        padding: 16,
         shadowColor: "#64748b",
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.1,

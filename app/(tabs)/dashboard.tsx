@@ -30,7 +30,7 @@ const MacroBar = ({ label, value, total, color }: { label: string, value: number
     );
 };
 
-// Helper for Meal Section
+
 const MealSection = ({ title, meals, onDelete }: { title: string, meals: FoodEntry[] | undefined, onDelete: (id: string) => void }) => {
     if (!meals || meals.length === 0) {
         return (
@@ -177,7 +177,7 @@ export default function Dashboard() {
                     })()}
                 </View>
 
-                {/* Active Calories Card */}
+
                 <View style={styles.activeCard}>
                     <View style={styles.activeHeader}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
     },
     streakContainer: {
         backgroundColor: "#fff7ed",
-        marginHorizontal: 0, // content has padding 20
+        marginHorizontal: 0,
         marginBottom: 24,
         padding: 12,
         borderRadius: 16,

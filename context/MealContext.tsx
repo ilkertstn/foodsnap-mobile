@@ -16,6 +16,7 @@ const STORAGE_KEYS = {
     LOGS: "foodsnap_logs",
     WEIGHT_HISTORY: "foodsnap_weight_history",
     RECENT_SCANS: "foodsnap_recent_scans",
+    GUEST_SCAN_COUNT: "foodsnap_guest_scan_count",
 };
 
 const DEFAULT_PROFILE: Profile = {
@@ -56,7 +57,8 @@ type MealContextType = {
     removeExercise: (date: string, id: string) => void;
     toggleReminder: (type: 'water' | 'meals', enabled: boolean) => Promise<boolean>;
     checkSmartReminders: () => Promise<void>;
-    getTotalMealCount: () => number;
+    guestScanCount: number;
+    incrementGuestScanCount: () => void;
     streaks: {
         water: number;
         log: number;
@@ -75,7 +77,7 @@ type MealContextType = {
 const MealContext = createContext<MealContextType | undefined>(undefined);
 
 export const MealProvider = ({ children }: { children: React.ReactNode }) => {
-    // Track current user ID reactively using onAuthStateChanged
+
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [authReady, setAuthReady] = useState(false);
 
@@ -95,6 +97,7 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
     const [recentScans, setRecentScans] = useState<FoodResult[]>([]);
     const [newlyUnlockedBadge, setNewlyUnlockedBadge] = useState<Badge | null>(null);
     const [showBackupPrompt, setShowBackupPrompt] = useState(false);
+    const [guestScanCount, setGuestScanCount] = useState(0);
 
     const checkBackupTrigger = async () => {
         if (!auth.currentUser?.isAnonymous) return;
@@ -127,18 +130,18 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
     const [isLoadingData, setIsLoadingData] = useState(true);
     const lastLoadedUidRef = React.useRef<string | null>(null);
 
-    // Initial Sync
+
     useEffect(() => {
-        if (!authReady) return; // Wait for auth to initialize
+        if (!authReady) return;
 
         const init = async () => {
             const userId = currentUserId;
             if (!userId) return;
 
-            // Mark that we're loading a new user
+
             lastLoadedUidRef.current = null;
 
-            // Reset state first to prevent leaking old user data
+
             setIsLoadingData(true);
             setProfile(DEFAULT_PROFILE);
             setGoals(DEFAULT_GOALS);
@@ -167,7 +170,13 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
                     setRecentScans(data.recentScans);
                 }
 
-                // Mark that this user's data is now loaded
+
+                const savedScanCount = await AsyncStorage.getItem(STORAGE_KEYS.GUEST_SCAN_COUNT);
+                if (savedScanCount) {
+                    setGuestScanCount(parseInt(savedScanCount, 10) || 0);
+                }
+
+
                 lastLoadedUidRef.current = userId;
             } catch (e) {
                 console.error("Bootstrap failed", e);
@@ -179,7 +188,6 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
         if (currentUserId) {
             init();
         } else {
-            // No user, reset to defaults
             lastLoadedUidRef.current = null;
             setProfile(DEFAULT_PROFILE);
             setGoals(DEFAULT_GOALS);
@@ -190,15 +198,14 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
         }
     }, [currentUserId, authReady]);
 
-    // Unified Persistence: Debounced save to Local + Cloud
+
     useEffect(() => {
         const userId = currentUserId;
-        // Skip if loading, no user, or if the current user doesn't match what we loaded
-        // (prevents cross-user writes during user switch)
+
         if (isLoadingData || !userId || lastLoadedUidRef.current !== userId) return;
 
         const timer = setTimeout(async () => {
-            // Double-check uid hasn't changed during the debounce
+
             if (lastLoadedUidRef.current !== userId) return;
 
             const currentData: LocalData = {
@@ -218,14 +225,14 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
         return () => clearTimeout(timer);
     }, [profile, goals, logs, weightHistory, recentScans, isLoadingData, currentUserId]);
 
-    // Recalculate goals on profile change (Strategy logic kept)
+
     useEffect(() => {
         if (goals.strategy === "auto") {
             recalculateGoals(profile);
         }
     }, [profile.weightKg, profile.heightCm, profile.age, profile.gender, profile.activity, profile.goal]);
 
-    // Removed old loadData/saveData functions and individual effects
+
 
     const recalculateGoals = (p: Profile) => {
         let bmr = 0;
@@ -508,10 +515,10 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
         const badge = ALL_BADGES.find(b => b.id === badgeId);
         if (!badge) return;
 
-        // Check if already unlocked first
+
         if (profile.unlockedBadges?.some(b => b.badgeId === badgeId)) return;
 
-        // Update profile
+
         setProfile(prev => ({
             ...prev,
             unlockedBadges: [
@@ -520,7 +527,7 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
             ]
         }));
 
-        // Set newly unlocked badge separately (not inside setProfile callback)
+
         setNewlyUnlockedBadge(badge);
     };
 
@@ -565,7 +572,7 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
 
     const evaluateBadges = async () => {
         console.log("Evaluate Badges Running");
-        // const streaks = calculateStreaks(); // Removed function call
+
         const unlockedIds = new Set(profile.unlockedBadges?.map(b => b.badgeId) || []);
         let newBadge: Badge | null = null;
         let updatedProfile = { ...profile };
@@ -633,7 +640,6 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
 
             if (unlocked) {
                 newBadge = badge;
-                // Avoid duplicates using updatedProfile which tracks accumulations in this loop
                 if (!updatedProfile.unlockedBadges?.some(b => b.badgeId === badge.id)) {
                     updatedProfile.unlockedBadges = [
                         ...(updatedProfile.unlockedBadges || []),
@@ -651,18 +657,20 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
         }
     };
 
-    const getTotalMealCount = () => {
-        let count = 0;
-        Object.values(logs).forEach(log => {
-            count += log.meals.breakfast.length + log.meals.lunch.length + log.meals.dinner.length + log.meals.snack.length;
-        });
-        return count;
+    const incrementGuestScanCount = async () => {
+        const newCount = guestScanCount + 1;
+        setGuestScanCount(newCount);
+        try {
+            await AsyncStorage.setItem(STORAGE_KEYS.GUEST_SCAN_COUNT, newCount.toString());
+        } catch (e) {
+            console.error("Error saving guest scan count", e);
+        }
     };
 
     const checkSmartReminders = async () => {
-        // Respect user settings
+
         const reminders = profile.reminders;
-        if (!reminders) return; // If settings not loaded or all off, don't nag.
+        if (!reminders) return;
 
         const today = new Date().toISOString().split('T')[0];
         const summary = getDailySummary(today);
@@ -685,9 +693,9 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
 
 
     useEffect(() => {
-        // if (Object.keys(logs).length > 0) {
-        //    evaluateBadges();
-        // }
+        if (Object.keys(logs).length > 0) {
+            evaluateBadges();
+        }
     }, [logs]);
 
     const contextValue = useMemo(() => ({
@@ -708,14 +716,15 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
         getDailySummary,
         toggleReminder,
         checkSmartReminders,
-        getTotalMealCount,
+        guestScanCount,
+        incrementGuestScanCount,
         streaks,
         newlyUnlockedBadge,
         clearNewBadge,
         showBackupPrompt,
         dismissBackupPrompt,
     }), [
-        profile, goals, logs, weightHistory, recentScans, streaks, newlyUnlockedBadge, showBackupPrompt
+        profile, goals, logs, weightHistory, recentScans, streaks, newlyUnlockedBadge, showBackupPrompt, guestScanCount
     ]);
 
     return (
