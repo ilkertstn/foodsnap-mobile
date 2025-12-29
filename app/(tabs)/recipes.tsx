@@ -29,6 +29,7 @@ export default function RecipesScreen() {
     const [loading, setLoading] = useState(true);
     const [selectedRecipe, setSelectedRecipe] = useState<RecipeDetail | null>(null);
     const [loadingDetail, setLoadingDetail] = useState(false);
+    const [loadingText, setLoadingText] = useState("Finding suggestions...");
 
     const today = getAdjustedDate();
     const summary = getDailySummary(today);
@@ -45,29 +46,30 @@ export default function RecipesScreen() {
 
     const loadRecipes = async () => {
         setLoading(true);
-
-        if (!isApiConfigured()) {
-            // Use demo recipes if API key not set
-            setRecipes(DEMO_RECIPES);
-            setLoading(false);
-            return;
-        }
+        setLoadingText("Checking remaining macros...");
 
         try {
+            await new Promise(r => setTimeout(r, 600));
+            setLoadingText("Scanning recipe database...");
+            await new Promise(r => setTimeout(r, 600));
+
+            // Execute search
             const results = await searchRecipesByNutrients({
-                maxCalories: Math.min(remainingCalories, 600),
-                maxCarbs: Math.min(remainingCarbs, 80),
-                maxProtein: Math.min(remainingProtein + 20, 50),
+                maxCalories: Math.min(remainingCalories, 800), // increased cap for better results
+                maxCarbs: Math.min(remainingCarbs, 100),
+                maxProtein: Math.min(remainingProtein + 20, 60),
                 minProtein: 10,
                 number: 10,
             });
 
+            await new Promise(r => setTimeout(r, 400));
             setRecipes(results.length > 0 ? results : DEMO_RECIPES);
         } catch (error) {
             console.error("Load recipes error:", error);
             setRecipes(DEMO_RECIPES);
         } finally {
             setLoading(false);
+            setLoadingText("Finding suggestions...");
         }
     };
 
@@ -139,14 +141,7 @@ export default function RecipesScreen() {
                 </View>
 
                 {/* Demo Mode Warning */}
-                {!isApiConfigured() && (
-                    <View style={styles.demoWarning}>
-                        <Ionicons name="information-circle" size={20} color="#d97706" />
-                        <Text style={styles.demoWarningText}>
-                            Demo mode - Add Spoonacular API key for real recipes
-                        </Text>
-                    </View>
-                )}
+
 
                 {/* Recipes List */}
                 <Text style={styles.sectionTitle}>Suggested Recipes</Text>
@@ -154,6 +149,7 @@ export default function RecipesScreen() {
                 {loading ? (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color="#8b5cf6" />
+                        <Text style={styles.loadingText}>{loadingText}</Text>
                     </View>
                 ) : (
                     <View style={styles.recipesGrid}>
@@ -376,6 +372,12 @@ const styles = StyleSheet.create({
     loadingContainer: {
         padding: 40,
         alignItems: "center",
+    },
+    loadingText: {
+        marginTop: 12,
+        fontSize: 14,
+        color: "#64748b",
+        fontWeight: "500",
     },
     recipesGrid: {
         gap: 16,

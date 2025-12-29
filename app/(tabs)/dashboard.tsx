@@ -289,6 +289,23 @@ export default function Dashboard() {
                 {/* Health/Steps Widget */}
                 <StepsWidget />
 
+                {/* Meal Plan Quick Access */}
+                <Pressable
+                    style={styles.mealPlanCard}
+                    onPress={() => router.push('/meal-plan')}
+                >
+                    <View style={styles.mealPlanContent}>
+                        <View style={styles.mealPlanIcon}>
+                            <Ionicons name="calendar" size={28} color="white" />
+                        </View>
+                        <View style={styles.mealPlanText}>
+                            <Text style={styles.mealPlanTitle}>AI Meal Plan</Text>
+                            <Text style={styles.mealPlanSubtitle}>Get your personalized weekly plan</Text>
+                        </View>
+                    </View>
+                    <Ionicons name="chevron-forward" size={24} color="#10b981" />
+                </Pressable>
+
 
                 <MealSection
                     title="Breakfast"
@@ -682,5 +699,46 @@ const styles = StyleSheet.create({
         width: 1,
         height: 40,
         backgroundColor: "#e2e8f0",
+    },
+    mealPlanCard: {
+        backgroundColor: "white",
+        borderRadius: 20,
+        padding: 16,
+        marginBottom: 20,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        shadowColor: "#10b981",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 4,
+        borderWidth: 1,
+        borderColor: "#d1fae5",
+    },
+    mealPlanContent: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 14,
+    },
+    mealPlanIcon: {
+        width: 50,
+        height: 50,
+        borderRadius: 14,
+        backgroundColor: "#10b981",
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    mealPlanText: {
+        gap: 2,
+    },
+    mealPlanTitle: {
+        fontSize: 16,
+        fontWeight: "700",
+        color: "#1e293b",
+    },
+    mealPlanSubtitle: {
+        fontSize: 13,
+        color: "#64748b",
     },
 });
