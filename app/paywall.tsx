@@ -2,12 +2,20 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useAuth } from "../context/AuthContext";
 
 export default function Paywall() {
     const router = useRouter();
+    const { user, isTrialExpired, signInGuest } = useAuth();
 
-    const handleStartGuest = () => {
-        // Start waiting period logic is handled by backend timestamp on first install
+    // Check if this is an expired guest user
+    const isExpiredGuest = user?.isAnonymous && isTrialExpired;
+
+    const handleStartGuest = async () => {
+        if (!user) {
+            // New user - sign in as guest first
+            await signInGuest();
+        }
         router.replace("/(tabs)/progress");
     };
 
@@ -25,45 +33,94 @@ export default function Paywall() {
                     contentFit="contain"
                 />
 
-                <Text style={styles.title}>Welcome to FoodSnap</Text>
+                <Text style={styles.title}>
+                    {isExpiredGuest ? "Trial Expired" : "Welcome to FoodSnap"}
+                </Text>
 
                 <View style={styles.infoContainer}>
-                    <Text style={styles.description}>
-                        Start your nutrition journey today.
-                    </Text>
+                    {isExpiredGuest ? (
+                        <>
+                            <Text style={styles.description}>
+                                Your 3-day guest trial has ended. Sign up to continue tracking!
+                            </Text>
 
-                    <View style={styles.featureItem}>
-                        <Text style={styles.featureIcon}>🗓️</Text>
-                        <Text style={styles.featureText}>
-                            Use freely for <Text style={styles.highlight}>3 Days</Text> with <Text style={styles.highlight}>10 Scans</Text> limit.
-                        </Text>
-                    </View>
+                            <View style={styles.featureItem}>
+                                <Text style={styles.featureIcon}>✨</Text>
+                                <Text style={styles.featureText}>
+                                    <Text style={styles.highlight}>Unlimited</Text> meal scans
+                                </Text>
+                            </View>
 
-                    <View style={styles.featureItem}>
-                        <Text style={styles.featureIcon}>📊</Text>
-                        <Text style={styles.featureText}>Track calories, macros, and water.</Text>
-                    </View>
+                            <View style={styles.featureItem}>
+                                <Text style={styles.featureIcon}>💾</Text>
+                                <Text style={styles.featureText}>Keep all your existing data</Text>
+                            </View>
 
-                    <View style={styles.featureItem}>
-                        <Text style={styles.featureIcon}>🔒</Text>
-                        <Text style={styles.featureText}>Sign up later to save your progress permanently.</Text>
-                    </View>
+                            <View style={styles.featureItem}>
+                                <Text style={styles.featureIcon}>📱</Text>
+                                <Text style={styles.featureText}>Access on any device</Text>
+                            </View>
+                        </>
+                    ) : (
+                        <>
+                            <Text style={styles.description}>
+                                Start your nutrition journey today.
+                            </Text>
+
+                            <View style={styles.featureItem}>
+                                <Text style={styles.featureIcon}>🗓️</Text>
+                                <Text style={styles.featureText}>
+                                    Use freely for <Text style={styles.highlight}>3 Days</Text> with <Text style={styles.highlight}>10 Scans</Text> limit.
+                                </Text>
+                            </View>
+
+                            <View style={styles.featureItem}>
+                                <Text style={styles.featureIcon}>📊</Text>
+                                <Text style={styles.featureText}>Track calories, macros, and water.</Text>
+                            </View>
+
+                            <View style={styles.featureItem}>
+                                <Text style={styles.featureIcon}>🔒</Text>
+                                <Text style={styles.featureText}>Sign up later to save your progress permanently.</Text>
+                            </View>
+                        </>
+                    )}
                 </View>
 
                 <View style={styles.buttonContainer}>
-                    <TouchableOpacity
-                        onPress={handleStartGuest}
-                        style={styles.primaryButton}
-                    >
-                        <Text style={styles.primaryButtonText}>Start 3-Day Guest Pass</Text>
-                    </TouchableOpacity>
+                    {isExpiredGuest ? (
+                        <>
+                            <TouchableOpacity
+                                onPress={() => router.push("/auth/signup")}
+                                style={styles.primaryButton}
+                            >
+                                <Text style={styles.primaryButtonText}>Sign Up Now</Text>
+                            </TouchableOpacity>
 
-                    <TouchableOpacity
-                        onPress={() => router.push("/auth/login")}
-                        style={styles.secondaryButton}
-                    >
-                        <Text style={styles.secondaryButtonText}>I already have an account</Text>
-                    </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => router.push("/auth/login")}
+                                style={styles.secondaryButton}
+                            >
+                                <Text style={styles.secondaryButtonText}>I already have an account</Text>
+                            </TouchableOpacity>
+                        </>
+                    ) : (
+                        <>
+                            <TouchableOpacity
+                                onPress={handleStartGuest}
+                                style={styles.primaryButton}
+                            >
+                                <Text style={styles.primaryButtonText}>Start 3-Day Guest Pass</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                onPress={() => router.push("/auth/login")}
+                                style={styles.secondaryButton}
+                            >
+                                <Text style={styles.secondaryButtonText}>I already have an account</Text>
+                            </TouchableOpacity>
+                        </>
+                    )}
                 </View>
             </View>
         </View>

@@ -11,7 +11,7 @@ import {
 
 
 
-const TRIAL_DAYS = 1 / 1440; // 1 Minute for testing
+const TRIAL_DAYS = 3;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function toMillis(ts: any): number | null {
@@ -49,9 +49,7 @@ export async function getOrCreateTrial(): Promise<TrialStatus> {
     }
 
     const data = snap.data() as any;
-    // TEST: Overwrite DB value to force expiration for existing users
-    const endsAtMs = Date.now() - 10000;
-    // const endsAtMs = toMillis(data?.trialEndsAt);
+    const endsAtMs = toMillis(data?.trialEndsAt);
 
     if (!endsAtMs) return { state: "unknown" };
 

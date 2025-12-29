@@ -13,7 +13,7 @@ import { useAuth } from "../context/AuthContext";
 
 export default function SplashScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isTrialExpired } = useAuth();
   const progress = useSharedValue(0);
 
   useEffect(() => {
@@ -28,14 +28,17 @@ export default function SplashScreen() {
       if (user && !user.isAnonymous) {
         // Authenticated users skip the guest pass screen
         router.replace("/(tabs)/progress");
+      } else if (user?.isAnonymous && isTrialExpired) {
+        // Guest user with expired trial - force paywall
+        router.replace("/paywall");
       } else {
-        // Guests (or new installs) see the offer
+        // New installs or active trial guests see the offer
         router.replace("/paywall");
       }
     }, 2800);
 
     return () => clearTimeout(timeout);
-  }, [user]);
+  }, [user, isTrialExpired]);
 
   const animatedProgressStyle = useAnimatedStyle(() => {
     return {
