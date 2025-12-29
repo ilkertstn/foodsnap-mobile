@@ -1,7 +1,3 @@
-/**
- * Recipes Tab
- * Shows recipe suggestions based on remaining macros
- */
 
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -34,7 +30,7 @@ export default function RecipesScreen() {
     const today = getAdjustedDate();
     const summary = getDailySummary(today);
 
-    // Calculate remaining macros
+
     const remainingCalories = Math.max(0, goals.calories - summary.consumed.calories);
     const remainingProtein = Math.max(0, goals.protein - summary.consumed.protein);
     const remainingCarbs = Math.max(0, goals.carbs - summary.consumed.carbs);
@@ -53,9 +49,9 @@ export default function RecipesScreen() {
             setLoadingText("Scanning recipe database...");
             await new Promise(r => setTimeout(r, 600));
 
-            // Execute search
+
             const results = await searchRecipesByNutrients({
-                maxCalories: Math.min(remainingCalories, 800), // increased cap for better results
+                maxCalories: Math.min(remainingCalories, 800), 
                 maxCarbs: Math.min(remainingCarbs, 100),
                 maxProtein: Math.min(remainingProtein + 20, 60),
                 minProtein: 10,
@@ -75,7 +71,7 @@ export default function RecipesScreen() {
 
     const handleRecipePress = async (recipe: Recipe) => {
         if (!isApiConfigured()) {
-            // Show demo detail for demo recipes
+
             setSelectedRecipe({
                 ...recipe,
                 summary: "This is a delicious and healthy recipe that fits perfectly within your remaining macros for the day.",
@@ -106,7 +102,7 @@ export default function RecipesScreen() {
             />
 
             <ScrollView contentContainerStyle={styles.content}>
-                {/* Header */}
+
                 <View style={styles.header}>
                     <Text style={styles.headerTitle}>Recipes</Text>
                     <Text style={styles.headerSubtitle}>
@@ -114,7 +110,7 @@ export default function RecipesScreen() {
                     </Text>
                 </View>
 
-                {/* Remaining Macros Card */}
+
                 <View style={styles.macroCard}>
                     <Text style={styles.macroCardTitle}>Remaining Today</Text>
                     <View style={styles.macroRow}>
@@ -140,10 +136,6 @@ export default function RecipesScreen() {
                     </View>
                 </View>
 
-                {/* Demo Mode Warning */}
-
-
-                {/* Recipes List */}
                 <Text style={styles.sectionTitle}>Suggested Recipes</Text>
 
                 {loading ? (
@@ -194,14 +186,14 @@ export default function RecipesScreen() {
                     </View>
                 )}
 
-                {/* Refresh Button */}
+
                 <Pressable style={styles.refreshButton} onPress={loadRecipes}>
                     <Ionicons name="refresh" size={20} color="#8b5cf6" />
                     <Text style={styles.refreshButtonText}>Load More Recipes</Text>
                 </Pressable>
             </ScrollView>
 
-            {/* Recipe Detail Modal */}
+
             <Modal
                 visible={!!selectedRecipe}
                 animationType="slide"

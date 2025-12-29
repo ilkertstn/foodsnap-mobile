@@ -1,7 +1,3 @@
-/**
- * AI Meal Plan Screen
- * Weekly personalized meal planning
- */
 
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -77,7 +73,7 @@ export default function MealPlanScreen() {
             setMealPlan(plan);
             setShoppingList(generateShoppingList(plan));
 
-            // Update selectedDay to reference the new plan's object
+
             if (distinctDate) {
                 const newDay = plan.days.find(d => d.date === distinctDate);
                 if (newDay) {
@@ -86,7 +82,7 @@ export default function MealPlanScreen() {
                     setSelectedDay(plan.days[0]);
                 }
             } else {
-                // Fallback if no date was found
+
                 setSelectedDay(plan.days[0]);
             }
 
@@ -94,7 +90,7 @@ export default function MealPlanScreen() {
             console.error("Error regenerating meal plan:", e);
         } finally {
             setLoading(false);
-            // Reset text for next time (or initial load)
+
             setTimeout(() => setLoadingText("Generating your personalized meal plan..."), 500);
         }
     };
@@ -153,7 +149,7 @@ export default function MealPlanScreen() {
                 style={StyleSheet.absoluteFill}
             />
 
-            {/* Header */}
+
             <View style={styles.header}>
                 <Pressable onPress={() => router.back()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={24} color="#1e293b" />
@@ -171,7 +167,7 @@ export default function MealPlanScreen() {
                 </View>
             ) : mealPlan ? (
                 <ScrollView contentContainerStyle={styles.content}>
-                    {/* Goals Summary */}
+
                     <View style={styles.goalsCard}>
                         <Text style={styles.goalsTitle}>Daily Target</Text>
                         <View style={styles.goalsRow}>
@@ -197,7 +193,7 @@ export default function MealPlanScreen() {
                         </View>
                     </View>
 
-                    {/* Week Days */}
+
                     <View style={styles.weekContainer}>
                         <Text style={styles.sectionTitle}>This Week</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.daysRow}>
@@ -254,7 +250,7 @@ export default function MealPlanScreen() {
                         </View>
                     )}
 
-                    {/* If no day selected, show first day */}
+
                     {!selectedDay && mealPlan.days.length > 0 && (
                         <View style={styles.dayMeals}>
                             <Text style={styles.sectionTitle}>{getDayName(mealPlan.days[0].date)}'s Meals</Text>
@@ -284,7 +280,7 @@ export default function MealPlanScreen() {
                 </ScrollView>
             ) : null}
 
-            {/* Shopping List Modal */}
+
             <Modal
                 visible={showShoppingList}
                 animationType="slide"

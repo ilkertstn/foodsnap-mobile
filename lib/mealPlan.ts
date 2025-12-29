@@ -1,19 +1,16 @@
-/**
- * AI Meal Plan Service (No Spoonacular)
- * Local-seed based weekly meal plans + macro scoring
- */
+
 
 import seed from "../data/recipes.seed.json";
 
-// Senin UI uyumu için: protein/carbs/fat string "35g" formatında
+
 export interface Recipe {
   id: string;
   title: string;
   image?: string;
   calories: number;
-  protein: string; // "35g"
-  carbs: string;   // "15g"
-  fat: string;     // "18g"
+  protein: string; 
+  carbs: string;
+  fat: string;     
   minutes?: number;
   ingredients?: string[];
   tags?: string[];
@@ -96,16 +93,16 @@ function pickBest(
     .filter(r => !usedIds.has(r.id))
     .map(r => ({ r, s: scoreRecipe(r, target) }))
     .sort((a, b) => a.s - b.s)
-    .slice(0, Math.max(6, limit * 6)); // çeşitlilik için biraz geniş havuz
+    .slice(0, Math.max(6, limit * 6)); 
 
-  // aynı top 1’i sürekli seçmesin diye ilk birkaç içinden random
+
   const out: Recipe[] = [];
   while (out.length < limit && ranked.length > 0) {
     const pickFrom = ranked.slice(0, Math.min(4, ranked.length));
     const chosen = pickFrom[Math.floor(Math.random() * pickFrom.length)];
     out.push(chosen.r);
     usedIds.add(chosen.r.id);
-    // remove chosen from ranked
+
     const idx = ranked.findIndex(x => x.r.id === chosen.r.id);
     if (idx >= 0) ranked.splice(idx, 1);
   }
@@ -113,7 +110,7 @@ function pickBest(
 }
 
 function mealPool(type: MealType) {
-  // seed’inde mealTypes varsa filtrele; yoksa hepsi kullanılsın
+
   const hasMealTypes = ALL_RECIPES.some(r => (r.mealTypes?.length ?? 0) > 0);
   if (!hasMealTypes) return ALL_RECIPES;
 
@@ -129,11 +126,7 @@ function categorizeIngredient(name: string): ShoppingListItem["category"] {
   return "other";
 }
 
-/** ---- Main API ---- */
 
-/**
- * Generate a weekly meal plan based on user's macro goals
- */
 export async function generateMealPlan(
   goals: { calories: number; protein: number; carbs: number; fat: number },
   startDate: Date = new Date()
@@ -259,9 +252,7 @@ export async function generateMealPlan(
 }
 
 
-/**
- * Generate a shopping list from a meal plan (real from ingredients)
- */
+
 export function generateShoppingList(plan: MealPlan): ShoppingListItem[] {
   const ingredientCounts = new Map<string, number>();
 
@@ -273,7 +264,7 @@ export function generateShoppingList(plan: MealPlan): ShoppingListItem[] {
     allMeals.push(...(d.snacks ?? []));
   }
 
-  // ingredient list yoksa boş dönme yerine basit fallback
+
   const hasIngredients = allMeals.some(m => (m.ingredients?.length ?? 0) > 0);
   if (!hasIngredients) {
     return [
@@ -292,10 +283,10 @@ export function generateShoppingList(plan: MealPlan): ShoppingListItem[] {
     }
   }
 
-  // amount = kaç tarifte geçti -> yaklaşık miktar
+
   const items: ShoppingListItem[] = Array.from(ingredientCounts.entries()).map(
     ([ingredient, count]) => {
-      // basit heuristik (istersen gram’a çevirecek tablo da kurarız)
+
       const amount =
         count >= 4 ? "Large" : count === 3 ? "Medium" : count === 2 ? "Small" : "1x";
 
@@ -307,7 +298,7 @@ export function generateShoppingList(plan: MealPlan): ShoppingListItem[] {
     }
   );
 
-  // kategoriye göre sıralı
+
   const order: Record<ShoppingListItem["category"], number> = {
     protein: 0,
     produce: 1,
@@ -319,18 +310,14 @@ export function generateShoppingList(plan: MealPlan): ShoppingListItem[] {
   return items.sort((a, b) => order[a.category] - order[b.category] || a.ingredient.localeCompare(b.ingredient));
 }
 
-/**
- * Get day names for display
- */
+
 export function getDayName(dateStr: string): string {
   const date = new Date(dateStr);
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   return days[date.getDay()];
 }
 
-/**
- * Get short day name
- */
+
 export function getShortDayName(dateStr: string): string {
   const date = new Date(dateStr);
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
