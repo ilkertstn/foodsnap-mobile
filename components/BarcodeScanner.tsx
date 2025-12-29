@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { CameraView, useCameraPermissions } from "expo-camera";
+import { BarcodeScanningResult, CameraView, useCameraPermissions } from "expo-camera";
 import React, { useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { FoodResult } from "../types";
@@ -29,40 +29,40 @@ export default function BarcodeScanner({ onResult, onCancel }: Props) {
         );
     }
 
-    const handleBarCodeScanned = async ({ data }: { data: string }) => {
+    const onScanned = async ({ data }: BarcodeScanningResult) => {
         if (scanned || loading) return;
+
         setScanned(true);
         setLoading(true);
 
         try {
-            const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${data}.json`);
-            const json = await response.json();
+            const res = await fetch(
+                `https://world.openfoodfacts.org/api/v0/product/${data}.json`
+            );
+            const json = await res.json();
 
-            if (json.status === 1) {
-                const product = json.product;
-                const result: FoodResult = {
-                    meal_name: product.product_name || "Unknown Product",
-                    category: "snack", // Default
-                    calories_kcal: product.nutriments["energy-kcal_100g"] || 0,
-                    macros_g: {
-                        protein: product.nutriments.proteins_100g || 0,
-                        carbs: product.nutriments.carbohydrates_100g || 0,
-                        fat: product.nutriments.fat_100g || 0,
-                    },
-                    ingredients: product.ingredients_text ? product.ingredients_text.split(",").map((i: string) => i.trim()) : [],
-                    confidence: "high",
-                    notes: `Scanned from barcode: ${data}`,
-                    quantity_basis: "100g",
-                };
-                onResult(result);
-            } else {
-                alert("Product not found");
-                setScanned(false);
-            }
-        } catch (error) {
-            alert("Error fetching product");
-            setScanned(false);
-        } finally {
+            if (!json.product) throw new Error("Product not found");
+
+            const product = json.product;
+
+            const mappedResult: FoodResult = {
+                meal_name: product.product_name || "Unknown product",
+                calories_kcal: Number(product.nutriments?.["energy-kcal_100g"] || 0),
+                macros_g: {
+                    protein: Number(product.nutriments?.proteins_100g || 0),
+                    carbs: Number(product.nutriments?.carbohydrates_100g || 0),
+                    fat: Number(product.nutriments?.fat_100g || 0),
+                },
+                ingredients: product.ingredients_text ? String(product.ingredients_text).split(",") : [],
+                notes: product.brands || "",
+                confidence: "high",
+                quantity_basis: "100g",
+                category: "snack",
+            };
+
+            onResult(mappedResult);
+        } catch (e) {
+            setScanned(false); // tekrar denesin
             setLoading(false);
         }
     };
@@ -71,7 +71,7 @@ export default function BarcodeScanner({ onResult, onCancel }: Props) {
         <View style={styles.container}>
             <CameraView
                 style={styles.camera}
-                onBarcodeScanned={handleBarCodeScanned}
+                onBarcodeScanned={scanned ? undefined : onScanned}
                 barcodeScannerSettings={{
                     barcodeTypes: ["ean13", "ean8", "upc_a", "upc_e"],
                 }}

@@ -6,7 +6,7 @@ import { setLocal } from "@/utils/sync/LocalStorage";
 import { bootstrapSync } from "@/utils/sync/SyncBootstrap";
 import { pushCloud } from "@/utils/sync/SyncService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { Badge, ExerciseEntry, FoodEntry, FoodResult, Goals, Logs, MealType, Profile, WeightEntry } from "../types";
 import { cancelReminders, registerForPushNotificationsAsync, scheduleMealReminders, scheduleWaterReminders, sendImmediateNotification } from "../utils/notifications";
 
@@ -16,6 +16,7 @@ const STORAGE_KEYS = {
     LOGS: "foodsnap_logs",
     WEIGHT_HISTORY: "foodsnap_weight_history",
     RECENT_SCANS: "foodsnap_recent_scans",
+    GUEST_SCAN_COUNT: "foodsnap_guest_scan_count",
 };
 
 const DEFAULT_PROFILE: Profile = {
@@ -56,6 +57,8 @@ type MealContextType = {
     removeExercise: (date: string, id: string) => void;
     toggleReminder: (type: 'water' | 'meals', enabled: boolean) => Promise<boolean>;
     checkSmartReminders: () => Promise<void>;
+    guestScanCount: number;
+    incrementGuestScanCount: () => void;
     streaks: {
         water: number;
         log: number;
@@ -74,7 +77,7 @@ type MealContextType = {
 const MealContext = createContext<MealContextType | undefined>(undefined);
 
 export const MealProvider = ({ children }: { children: React.ReactNode }) => {
-    // Track current user ID reactively using onAuthStateChanged
+
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [authReady, setAuthReady] = useState(false);
 
@@ -94,6 +97,7 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
     const [recentScans, setRecentScans] = useState<FoodResult[]>([]);
     const [newlyUnlockedBadge, setNewlyUnlockedBadge] = useState<Badge | null>(null);
     const [showBackupPrompt, setShowBackupPrompt] = useState(false);
+    const [guestScanCount, setGuestScanCount] = useState(0);
 
     const checkBackupTrigger = async () => {
         if (!auth.currentUser?.isAnonymous) return;
@@ -126,18 +130,18 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
     const [isLoadingData, setIsLoadingData] = useState(true);
     const lastLoadedUidRef = React.useRef<string | null>(null);
 
-    // Initial Sync
+
     useEffect(() => {
-        if (!authReady) return; // Wait for auth to initialize
+        if (!authReady) return;
 
         const init = async () => {
             const userId = currentUserId;
             if (!userId) return;
 
-            // Mark that we're loading a new user
+
             lastLoadedUidRef.current = null;
 
-            // Reset state first to prevent leaking old user data
+
             setIsLoadingData(true);
             setProfile(DEFAULT_PROFILE);
             setGoals(DEFAULT_GOALS);
@@ -166,7 +170,13 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
                     setRecentScans(data.recentScans);
                 }
 
-                // Mark that this user's data is now loaded
+
+                const savedScanCount = await AsyncStorage.getItem(STORAGE_KEYS.GUEST_SCAN_COUNT);
+                if (savedScanCount) {
+                    setGuestScanCount(parseInt(savedScanCount, 10) || 0);
+                }
+
+
                 lastLoadedUidRef.current = userId;
             } catch (e) {
                 console.error("Bootstrap failed", e);
@@ -178,7 +188,6 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
         if (currentUserId) {
             init();
         } else {
-            // No user, reset to defaults
             lastLoadedUidRef.current = null;
             setProfile(DEFAULT_PROFILE);
             setGoals(DEFAULT_GOALS);
@@ -189,15 +198,14 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
         }
     }, [currentUserId, authReady]);
 
-    // Unified Persistence: Debounced save to Local + Cloud
+
     useEffect(() => {
         const userId = currentUserId;
-        // Skip if loading, no user, or if the current user doesn't match what we loaded
-        // (prevents cross-user writes during user switch)
+
         if (isLoadingData || !userId || lastLoadedUidRef.current !== userId) return;
 
         const timer = setTimeout(async () => {
-            // Double-check uid hasn't changed during the debounce
+
             if (lastLoadedUidRef.current !== userId) return;
 
             const currentData: LocalData = {
@@ -217,14 +225,14 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
         return () => clearTimeout(timer);
     }, [profile, goals, logs, weightHistory, recentScans, isLoadingData, currentUserId]);
 
-    // Recalculate goals on profile change (Strategy logic kept)
+
     useEffect(() => {
         if (goals.strategy === "auto") {
             recalculateGoals(profile);
         }
     }, [profile.weightKg, profile.heightCm, profile.age, profile.gender, profile.activity, profile.goal]);
 
-    // Removed old loadData/saveData functions and individual effects
+
 
     const recalculateGoals = (p: Profile) => {
         let bmr = 0;
@@ -507,55 +515,43 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
         const badge = ALL_BADGES.find(b => b.id === badgeId);
         if (!badge) return;
 
-        setProfile(prev => {
 
-            if (prev.unlockedBadges?.some(b => b.badgeId === badgeId)) return prev;
+        if (profile.unlockedBadges?.some(b => b.badgeId === badgeId)) return;
 
-            setNewlyUnlockedBadge(badge);
 
-            return {
-                ...prev,
-                unlockedBadges: [
-                    ...(prev.unlockedBadges || []),
-                    { badgeId, unlockedAt: Date.now() }
-                ]
-            };
-        });
+        setProfile(prev => ({
+            ...prev,
+            unlockedBadges: [
+                ...(prev.unlockedBadges || []),
+                { badgeId, unlockedAt: Date.now() }
+            ]
+        }));
+
+
+        setNewlyUnlockedBadge(badge);
     };
 
     const clearNewBadge = () => setNewlyUnlockedBadge(null);
 
-    const calculateStreaks = () => {
+    const streaks = useMemo(() => {
         const today = new Date().toISOString().split('T')[0];
-        const sortedDates = Object.keys(logs).sort().reverse();
-
-
         let waterStreak = 0;
         let logStreak = 0;
 
-
-        let currentStreak = 0;
-
         let checkDate = new Date();
-
 
         for (let i = 0; i < 30; i++) {
             const dStr = checkDate.toISOString().split('T')[0];
             const log = logs[dStr];
 
-
             if (log && log.water_ml >= (goals.water || 2000)) {
                 waterStreak++;
             } else if (dStr !== today) {
-
                 break;
             }
-
             checkDate.setDate(checkDate.getDate() - 1);
         }
 
-
-        currentStreak = 0;
         checkDate = new Date();
         for (let i = 0; i < 30; i++) {
             const dStr = checkDate.toISOString().split('T')[0];
@@ -565,18 +561,18 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
             if (mealCount >= 2) {
                 logStreak++;
             } else if (dStr !== today) {
-
                 break;
             }
             checkDate.setDate(checkDate.getDate() - 1);
         }
 
         return { water: waterStreak, log: logStreak };
-    };
+    }, [logs, goals.water]);
 
 
     const evaluateBadges = async () => {
-        const streaks = calculateStreaks();
+        console.log("Evaluate Badges Running");
+
         const unlockedIds = new Set(profile.unlockedBadges?.map(b => b.badgeId) || []);
         let newBadge: Badge | null = null;
         let updatedProfile = { ...profile };
@@ -587,21 +583,19 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
             let unlocked = false;
             const { condition } = badge;
             if (typeof condition === 'string') continue;
+
             const today = new Date().toISOString().split('T')[0];
 
             if (condition.type === 'count') {
                 if (condition.metric === 'water_log') {
-
                     const daysWithWater = Object.values(logs).filter(l => l.water_ml > 0).length;
                     if (daysWithWater >= condition.count) unlocked = true;
                 }
-
             } else if (condition.type === 'streak_days') {
                 if (condition.metric === 'water_goal' && streaks.water >= condition.days) unlocked = true;
                 if (condition.metric === 'log_streak' && streaks.log >= condition.days) unlocked = true;
 
                 if (condition.metric === 'calorie_goal') {
-
                     let calStreak = 0;
                     let d = new Date();
                     for (let i = 0; i < condition.days + 2; i++) {
@@ -615,6 +609,7 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
                         if (dayLog && cals > 0 && cals <= goals.calories) {
                             calStreak++;
                         } else if (dateStr !== today) {
+                            // If we miss a day other than today (which might be incomplete), break
                             break;
                         }
                         d.setDate(d.getDate() - 1);
@@ -623,7 +618,6 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
                 }
             } else if (condition.type === 'consistency') {
                 if (condition.metric === 'calorie_goal') {
-
                     let hitCount = 0;
                     let d = new Date();
                     for (let i = 0; i < condition.window; i++) {
@@ -646,71 +640,95 @@ export const MealProvider = ({ children }: { children: React.ReactNode }) => {
 
             if (unlocked) {
                 newBadge = badge;
-                updatedProfile.unlockedBadges = [...(updatedProfile.unlockedBadges || []), { badgeId: badge.id, unlockedAt: Date.now() }];
+                if (!updatedProfile.unlockedBadges?.some(b => b.badgeId === badge.id)) {
+                    updatedProfile.unlockedBadges = [
+                        ...(updatedProfile.unlockedBadges || []),
+                        { badgeId: badge.id, unlockedAt: Date.now() }
+                    ];
+                }
                 unlockedIds.add(badge.id);
             }
         }
 
         if (newBadge) {
+            console.log("Unlocking new badge:", newBadge.id);
             setProfile(updatedProfile);
             setNewlyUnlockedBadge(newBadge);
         }
     };
 
+    const incrementGuestScanCount = async () => {
+        const newCount = guestScanCount + 1;
+        setGuestScanCount(newCount);
+        try {
+            await AsyncStorage.setItem(STORAGE_KEYS.GUEST_SCAN_COUNT, newCount.toString());
+        } catch (e) {
+            console.error("Error saving guest scan count", e);
+        }
+    };
+
     const checkSmartReminders = async () => {
+
+        const reminders = profile.reminders;
+        if (!reminders) return;
+
         const today = new Date().toISOString().split('T')[0];
         const summary = getDailySummary(today);
         const currentHour = new Date().getHours();
 
-        if (currentHour >= 14 && currentHour < 20 && summary.consumed.water < 1000) {
+        if (reminders.water && currentHour >= 14 && currentHour < 20 && summary.consumed.water < 1000) {
             await sendImmediateNotification("💧 Drink Water!", "You're behind on your water goal. Grab a glass!");
         }
 
-        if (currentHour >= 20 && currentHour < 22 && summary.consumed.calories < (goals.calories * 0.5)) {
+        if (reminders.meals && currentHour >= 20 && currentHour < 22 && summary.consumed.calories < (goals.calories * 0.5)) {
             await sendImmediateNotification("🍽️ Low Energy?", "You've only eaten 50% of your daily goal. Don't forget dinner!");
         }
     };
 
     useEffect(() => {
-
-        checkSmartReminders();
-    }, []);
+        if (!isLoadingData) {
+            checkSmartReminders();
+        }
+    }, [isLoadingData]);
 
 
     useEffect(() => {
-
         if (Object.keys(logs).length > 0) {
             evaluateBadges();
         }
     }, [logs]);
 
+    const contextValue = useMemo(() => ({
+        profile,
+        updateProfile,
+        goals,
+        updateGoals,
+        logs,
+        weightHistory,
+        addWeightEntry,
+        recentScans,
+        addRecentScan,
+        addEntry,
+        removeEntry,
+        addWater,
+        addExercise,
+        removeExercise,
+        getDailySummary,
+        toggleReminder,
+        checkSmartReminders,
+        guestScanCount,
+        incrementGuestScanCount,
+        streaks,
+        newlyUnlockedBadge,
+        clearNewBadge,
+        showBackupPrompt,
+        dismissBackupPrompt,
+    }), [
+        profile, goals, logs, weightHistory, recentScans, streaks, newlyUnlockedBadge, showBackupPrompt, guestScanCount
+    ]);
+
     return (
-        <MealContext.Provider
-            value={{
-                profile,
-                updateProfile,
-                goals,
-                updateGoals,
-                logs,
-                weightHistory,
-                addWeightEntry,
-                recentScans,
-                addRecentScan,
-                addEntry,
-                removeEntry,
-                addWater,
-                addExercise,
-                removeExercise,
-                getDailySummary,
-                toggleReminder,
-                checkSmartReminders,
-                streaks: calculateStreaks(),
-                newlyUnlockedBadge,
-                clearNewBadge,
-                showBackupPrompt,
-                dismissBackupPrompt,
-            }}
-        >
+        <MealContext.Provider value={contextValue}>
             {children}
         </MealContext.Provider>
     );

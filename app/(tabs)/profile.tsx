@@ -74,12 +74,11 @@ export default function Profile() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const { profile, updateProfile, goals, updateGoals, toggleReminder } = useMeals();
-    const { signOut, user } = useAuth(); // Import auth
+    const { signOut, user } = useAuth();
 
     const [localProfile, setLocalProfile] = useState(profile);
     const [localGoals, setLocalGoals] = useState(goals);
 
-    // Form state to handle string inputs (allowing empty strings, decimals etc)
     const [formProfile, setFormProfile] = useState({
         age: String(profile.age),
         heightCm: String(profile.heightCm),
@@ -100,7 +99,7 @@ export default function Profile() {
 
     const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-    // Custom Alert State
+
     const [alertVisible, setAlertVisible] = useState(false);
     const [alertConfig, setAlertConfig] = useState<{
         type: AlertType;
@@ -139,9 +138,8 @@ export default function Profile() {
     };
 
     const handleSignOut = async () => {
-        // Fallback for user state
-        const isAnon = user?.isAnonymous ?? true; // Assume guest if undefined to show warning
 
+        const isAnon = user?.isAnonymous ?? true;
         if (isAnon) {
             showCustomAlert(
                 "warning",
@@ -151,7 +149,7 @@ export default function Profile() {
                 async () => {
                     setAlertVisible(false);
                     await signOut();
-                    // Force navigation to prevent loops or confusion
+
                     router.replace("/");
                 },
                 "Cancel",
@@ -176,7 +174,6 @@ export default function Profile() {
 
 
 
-    // Sync local state from context when NOT editing (display mode should always show latest)
     React.useEffect(() => {
         if (!isEditing) {
             setLocalProfile(profile);
@@ -194,7 +191,7 @@ export default function Profile() {
         }
     }, [profile, goals, isEditing]);
 
-    // When entering edit mode, re-sync to ensure we're editing the latest values
+
     React.useEffect(() => {
         if (isEditing) {
             setLocalProfile(profile);
@@ -214,7 +211,7 @@ export default function Profile() {
 
     React.useEffect(() => {
         if (goals.strategy === "auto" && isEditing) {
-            // Use formProfile values parsed to numbers, fallback to 0
+
             const age = Number(formProfile.age) || 0;
             const weight = Number(formProfile.weightKg) || 0;
             const height = Number(formProfile.heightCm) || 0;
@@ -242,7 +239,7 @@ export default function Profile() {
             const cG = Math.round((newCalories * 0.35) / 4);
             const fG = Math.round((newCalories * 0.35) / 9);
 
-            // Update form strings for goals ONLY derived from calculation
+
             setFormProfile(prev => ({
                 ...prev,
                 calories: String(newCalories),
@@ -251,24 +248,24 @@ export default function Profile() {
                 fat: String(fG),
             }));
 
-            // Also update localGoals for non-string usages if any
+
             setLocalGoals(prev => ({
                 ...prev,
                 calories: newCalories,
                 protein: pG,
                 carbs: cG,
                 fat: fG,
-                water: prev.water // Preserve existing water number
+
             }));
         }
     }, [
         isEditing, goals.strategy,
-        formProfile.age, formProfile.weightKg, formProfile.heightCm, // Listen to string changes
+        formProfile.age, formProfile.weightKg, formProfile.heightCm,
         localProfile.gender, localProfile.activity, localProfile.goal
     ]);
 
     const handleSave = async () => {
-        // Check if reminders changed
+
         if (localProfile.reminders?.water !== profile.reminders?.water) {
             await toggleReminder('water', localProfile.reminders?.water ?? false);
         }
@@ -276,7 +273,7 @@ export default function Profile() {
             await toggleReminder('meals', localProfile.reminders?.meals ?? false);
         }
 
-        // Parse strings to numbers for save
+
         const finalProfile = {
             ...localProfile,
             age: Number(formProfile.age) || 0,

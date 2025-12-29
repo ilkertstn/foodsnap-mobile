@@ -59,9 +59,8 @@ export default function LoginScreen() {
         setIsLoading(true);
         try {
             await signIn(email.trim(), password);
-            // AuthContext/RootLayout will handle redirection
-            // But strict redirect for safety:
-            // router.replace("/(tabs)/progress"); 
+            // Explicitly redirect to tabs on success
+            router.replace("/(tabs)/progress");
         } catch (e: any) {
             showCustomAlert("error", "Login Failed", getAuthErrorMessage(e));
         } finally {
