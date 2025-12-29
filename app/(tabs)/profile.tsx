@@ -10,6 +10,7 @@ import CustomAlertModal, { AlertType } from "../../components/CustomAlertModal";
 import SuccessModal from "../../components/SuccessModal";
 import { ALL_BADGES } from "../../constants/badges";
 import { useAuth } from "../../context/AuthContext";
+import { useHealth } from "../../context/HealthContext";
 import { useMeals } from "../../context/MealContext";
 
 const SectionHeader = ({ title, icon }: { title: string; icon: keyof typeof Ionicons.glyphMap }) => (
@@ -75,6 +76,7 @@ export default function Profile() {
     const router = useRouter();
     const { profile, updateProfile, goals, updateGoals, toggleReminder } = useMeals();
     const { signOut, user } = useAuth();
+    const { isEnabled: isHealthEnabled, isAvailable: isHealthAvailable, enableHealthIntegration, disableHealthIntegration } = useHealth();
 
     const [localProfile, setLocalProfile] = useState(profile);
     const [localGoals, setLocalGoals] = useState(goals);
@@ -738,6 +740,35 @@ export default function Profile() {
                             })}
                         </View>
                     </View>
+
+                    {/* Health Integration */}
+                    {isHealthAvailable && (
+                        <View style={styles.card}>
+                            <View style={styles.sectionHeader}>
+                                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                    <Ionicons name="fitness" size={20} color="#8b5cf6" />
+                                    <Text style={styles.sectionTitle}>Health Integration</Text>
+                                </View>
+                            </View>
+                            <View style={styles.goalRow}>
+                                <View>
+                                    <Text style={styles.goalLabel}>Apple Health / Google Fit</Text>
+                                    <Text style={styles.macroLabel}>Sync steps, distance, and activity</Text>
+                                </View>
+                                <Switch
+                                    value={isHealthEnabled}
+                                    onValueChange={async (val) => {
+                                        if (val) {
+                                            await enableHealthIntegration();
+                                        } else {
+                                            await disableHealthIntegration();
+                                        }
+                                    }}
+                                    trackColor={{ true: "#8b5cf6" }}
+                                />
+                            </View>
+                        </View>
+                    )}
 
                     {/* Redundant Test FB Write button removed previous step? No I am replacing content at line 653-656 */}
                     <Pressable

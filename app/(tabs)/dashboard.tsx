@@ -9,6 +9,7 @@ import AddExerciseModal from "../../components/AddExerciseModal";
 import DaySummaryModal from "../../components/DaySummaryModal";
 import SuccessModal from "../../components/SuccessModal";
 import WaterTracker from "../../components/WaterTracker";
+import { useHealth } from "../../context/HealthContext";
 import { useMeals } from "../../context/MealContext";
 import { FoodEntry, MealType } from "../../types";
 import { formatDate, getAdjustedDate, isAdjustedToday } from "../../utils/date";
@@ -64,6 +65,77 @@ const MealSection = ({ title, meals, onDelete }: { title: string, meals: FoodEnt
     );
 };
 
+// Health/Steps Widget
+const StepsWidget = () => {
+    const { healthData, isEnabled, isAvailable, isLoading, enableHealthIntegration } = useHealth();
+
+    // Demo mode for Expo Go (when native health modules aren't available)
+    const DEMO_MODE = !isAvailable;
+    const demoData = { steps: 5234, activeCalories: 187, distance: 3240 };
+
+    if (isLoading) return null;
+
+    // Show connect prompt if available but not enabled (non-demo)
+    if (isAvailable && !isEnabled) {
+        return (
+            <View style={styles.healthCard}>
+                <View style={styles.healthHeader}>
+                    <Ionicons name="footsteps" size={24} color="#8b5cf6" />
+                    <Text style={styles.healthTitle}>Connect Health</Text>
+                </View>
+                <Text style={styles.healthDescription}>
+                    Sync your steps and activity from Apple Health or Google Fit
+                </Text>
+                <Pressable
+                    style={styles.connectButton}
+                    onPress={enableHealthIntegration}
+                >
+                    <Text style={styles.connectButtonText}>Connect</Text>
+                </Pressable>
+            </View>
+        );
+    }
+
+    const formatDistance = (meters: number) => {
+        if (meters >= 1000) {
+            return `${(meters / 1000).toFixed(1)} km`;
+        }
+        return `${Math.round(meters)} m`;
+    };
+
+    // Use demo data or real health data
+    const displayData = DEMO_MODE ? demoData : (healthData || demoData);
+
+    return (
+        <View style={styles.healthCard}>
+            <View style={styles.healthHeader}>
+                <Ionicons name="footsteps" size={24} color="#8b5cf6" />
+                <Text style={styles.healthTitle}>Today's Activity</Text>
+                {DEMO_MODE && (
+                    <View style={{ backgroundColor: '#fef3c7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, marginLeft: 8 }}>
+                        <Text style={{ fontSize: 10, color: '#d97706', fontWeight: '600' }}>DEMO</Text>
+                    </View>
+                )}
+            </View>
+            <View style={styles.healthStats}>
+                <View style={styles.healthStat}>
+                    <Text style={styles.healthStatValue}>{displayData.steps.toLocaleString()}</Text>
+                    <Text style={styles.healthStatLabel}>Steps</Text>
+                </View>
+                <View style={styles.healthStatDivider} />
+                <View style={styles.healthStat}>
+                    <Text style={styles.healthStatValue}>{formatDistance(displayData.distance)}</Text>
+                    <Text style={styles.healthStatLabel}>Distance</Text>
+                </View>
+                <View style={styles.healthStatDivider} />
+                <View style={styles.healthStat}>
+                    <Text style={styles.healthStatValue}>{Math.round(displayData.activeCalories)}</Text>
+                    <Text style={styles.healthStatLabel}>Active Cal</Text>
+                </View>
+            </View>
+        </View>
+    );
+};
 
 
 export default function Dashboard() {
@@ -213,6 +285,9 @@ export default function Dashboard() {
 
                 {/* Water Tracker */}
                 <WaterTracker />
+
+                {/* Health/Steps Widget */}
+                <StepsWidget />
 
 
                 <MealSection
@@ -541,5 +616,71 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: "700",
         color: "#f59e0b",
+    },
+    // Health Widget Styles
+    healthCard: {
+        backgroundColor: "white",
+        borderRadius: 20,
+        padding: 16,
+        marginBottom: 16,
+        shadowColor: "#64748b",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+        elevation: 4,
+    },
+    healthHeader: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+        marginBottom: 12,
+    },
+    healthTitle: {
+        fontSize: 17,
+        fontWeight: "700",
+        color: "#1e293b",
+    },
+    healthDescription: {
+        fontSize: 14,
+        color: "#64748b",
+        marginBottom: 16,
+        lineHeight: 20,
+    },
+    connectButton: {
+        backgroundColor: "#8b5cf6",
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 12,
+        alignItems: "center",
+    },
+    connectButtonText: {
+        color: "white",
+        fontSize: 15,
+        fontWeight: "600",
+    },
+    healthStats: {
+        flexDirection: "row",
+        justifyContent: "space-around",
+        alignItems: "center",
+    },
+    healthStat: {
+        alignItems: "center",
+        flex: 1,
+    },
+    healthStatValue: {
+        fontSize: 22,
+        fontWeight: "800",
+        color: "#8b5cf6",
+    },
+    healthStatLabel: {
+        fontSize: 12,
+        color: "#64748b",
+        marginTop: 4,
+        fontWeight: "500",
+    },
+    healthStatDivider: {
+        width: 1,
+        height: 40,
+        backgroundColor: "#e2e8f0",
     },
 });

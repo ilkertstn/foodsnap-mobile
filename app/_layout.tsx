@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { UpgradePrompt } from "../components/UpgradePrompt";
 import { AuthProvider, useAuth } from "../context/AuthContext";
+import { HealthProvider } from "../context/HealthContext";
 import { MealProvider, useMeals } from "../context/MealContext";
 
 function RootLayoutNav() {
@@ -82,7 +83,9 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <MealProvider>
-        <RootLayoutNav />
+        <HealthProvider>
+          <RootLayoutNav />
+        </HealthProvider>
       </MealProvider>
     </AuthProvider>
   );

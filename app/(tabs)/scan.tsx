@@ -29,6 +29,7 @@ const API_BASE = "http://192.168.1.10:3000";
 const MEAL_TYPES: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
 
 import BarcodeScanner from "../../components/BarcodeScanner";
+import FoodSearchModal from "../../components/FoodSearchModal";
 import SuccessModal from "../../components/SuccessModal";
 
 export default function ScanScreen() {
@@ -48,6 +49,7 @@ export default function ScanScreen() {
 
 
     const [isScanning, setIsScanning] = useState(false);
+    const [showFoodSearch, setShowFoodSearch] = useState(false);
 
 
     const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -236,6 +238,28 @@ export default function ScanScreen() {
         }
     };
 
+    const handleFoodSearchSelect = (food: FoodResult, category: MealType) => {
+        const today = getAdjustedDate();
+        addEntry(today, category, {
+            meal_name: food.meal_name,
+            category: category,
+            calories_kcal: food.calories_kcal,
+            macros_g: food.macros_g,
+            ingredients: food.ingredients,
+            confidence: food.confidence,
+            quantity_basis: food.quantity_basis,
+            notes: "",
+            grams: 100,
+        });
+        addRecentScan(food);
+        setShowSuccessModal(true);
+
+        // Increment guest scan count
+        if (user?.isAnonymous) {
+            incrementGuestScanCount();
+        }
+    };
+
     if (isScanning) {
         return (
             <BarcodeScanner
@@ -304,7 +328,7 @@ export default function ScanScreen() {
                         </Pressable>
                     </View>
 
-                    <View style={{ marginTop: 12 }}>
+                    <View style={{ marginTop: 12, gap: 12 }}>
                         <Pressable
                             onPress={() => setIsScanning(true)}
                             style={({ pressed }) => [
@@ -315,6 +339,18 @@ export default function ScanScreen() {
                         >
                             <Ionicons name="barcode-outline" size={24} color="#1e293b" />
                             <Text style={styles.barcodeButtonText}>Scan Barcode</Text>
+                        </Pressable>
+
+                        <Pressable
+                            onPress={() => setShowFoodSearch(true)}
+                            style={({ pressed }) => [
+                                styles.actionButton,
+                                styles.searchButton,
+                                pressed && styles.buttonPressed,
+                            ]}
+                        >
+                            <Ionicons name="search" size={24} color="#1e293b" />
+                            <Text style={styles.barcodeButtonText}>Search Food</Text>
                         </Pressable>
                     </View>
 
@@ -485,6 +521,14 @@ export default function ScanScreen() {
                     </View>
                 </View>
             )}
+
+            <FoodSearchModal
+                visible={showFoodSearch}
+                onClose={() => setShowFoodSearch(false)}
+                onSelect={handleFoodSearchSelect}
+                defaultCategory={selectedCategory}
+            />
+
             <SuccessModal
                 visible={showSuccessModal}
                 title="Meal Logged!"
@@ -563,6 +607,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
         gap: 8,
+
     },
     cameraButton: {
         backgroundColor: "#1e293b",
@@ -596,6 +641,12 @@ const styles = StyleSheet.create({
         color: "#1e293b",
         fontSize: 16,
         fontWeight: "600",
+
+    },
+    searchButton: {
+        backgroundColor: "#e0f2fe",
+        borderWidth: 1,
+        borderColor: "#38bdf8",
     },
     saveButton: {
         backgroundColor: "#10b981",
