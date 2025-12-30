@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import { useLanguage } from "../context/LanguageContext";
 
 interface SuccessModalProps {
     visible: boolean;
@@ -16,10 +17,13 @@ export default function SuccessModal({
     onClose,
     title,
     message,
-    buttonText = "Awesome",
+    buttonText,
 }: SuccessModalProps) {
     const scale = useSharedValue(0.92);
     const opacity = useSharedValue(0);
+    const { t } = useLanguage();
+
+    const resolvedButtonText = buttonText ?? t("success_modal.button_ok");
 
     useEffect(() => {
         if (visible) {
@@ -54,7 +58,7 @@ export default function SuccessModal({
                     <Text style={styles.message}>{message}</Text>
 
                     <Pressable onPress={onClose} style={styles.button}>
-                        <Text style={styles.buttonText}>{buttonText}</Text>
+                        <Text style={styles.buttonText}>{resolvedButtonText}</Text>
                     </Pressable>
                 </Animated.View>
             </View>

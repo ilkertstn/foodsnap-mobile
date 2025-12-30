@@ -11,9 +11,11 @@ import SuccessModal from "../../components/SuccessModal";
 import { ALL_BADGES } from "../../constants/badges";
 import { useAuth } from "../../context/AuthContext";
 import { useHealth } from "../../context/HealthContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { useMeals } from "../../context/MealContext";
 
 const SectionHeader = ({ title, icon }: { title: string; icon: keyof typeof Ionicons.glyphMap }) => (
+
     <View style={styles.sectionHeader}>
         <Ionicons name={icon} size={20} color="#3b82f6" />
         <Text style={styles.sectionTitle}>{title}</Text>
@@ -72,11 +74,13 @@ const SelectionModal = ({
 );
 
 export default function Profile() {
+    const { t } = useLanguage();
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const { profile, updateProfile, goals, updateGoals, toggleReminder } = useMeals();
     const { signOut, user } = useAuth();
     const { isEnabled: isHealthEnabled, isAvailable: isHealthAvailable, enableHealthIntegration, disableHealthIntegration } = useHealth();
+    const { language, setLanguage } = useLanguage();
 
     const [localProfile, setLocalProfile] = useState(profile);
     const [localGoals, setLocalGoals] = useState(goals);
@@ -324,22 +328,21 @@ export default function Profile() {
             <SelectionModal
                 visible={showActivityModal}
                 onClose={() => setShowActivityModal(false)}
-                title="Select Activity Level"
+                title={t("profile.select_activity")}
                 options={[
-                    { label: "Sedentary (Little/no exercise)", value: "sedentary" },
-                    { label: "Light (Exercise 1-3 days/wk)", value: "light" },
-                    { label: "Active (Exercise 3-5 days/wk)", value: "active" },
+                    { label: t('profile.sedentary'), value: "sedentary" },
+                    { label: t('profile.light'), value: "light" },
+                    { label: t('profile.active'), value: "active" },
                 ]}
                 onSelect={(val) => setLocalProfile({ ...localProfile, activity: val })}
             />
-
             <SelectionModal
                 visible={showGenderModal}
                 onClose={() => setShowGenderModal(false)}
-                title="Select Gender"
+                title={t("profile.select_gender")}
                 options={[
-                    { label: "Male", value: "male" },
-                    { label: "Female", value: "female" },
+                    { label: t("profile.male"), value: "male" },
+                    { label: t("profile.female"), value: "female" },
                 ]}
                 onSelect={(val) => setLocalProfile({ ...localProfile, gender: val })}
             />
@@ -347,11 +350,11 @@ export default function Profile() {
             <SelectionModal
                 visible={showGoalModal}
                 onClose={() => setShowGoalModal(false)}
-                title="Select Goal"
+                title={t('profile.goal')}
                 options={[
-                    { label: "Lose Weight (-500 kcal)", value: "lose" },
-                    { label: "Maintain Weight", value: "maintain" },
-                    { label: "Gain Muscle (+500 kcal)", value: "gain" },
+                    { label: t('profile.lose'), value: "lose" },
+                    { label: t('profile.maintain'), value: "maintain" },
+                    { label: t('profile.gain'), value: "gain" },
                 ]}
                 onSelect={(val) => setLocalProfile({ ...localProfile, goal: val })}
             />
@@ -362,9 +365,9 @@ export default function Profile() {
             >
                 <ScrollView contentContainerStyle={styles.content}>
                     <View style={styles.header}>
-                        <Text style={styles.headerTitle}>Profile & Goals</Text>
+                        <Text style={styles.headerTitle}>{t('profile.profileHeader')}</Text>
                         <Pressable onPress={() => isEditing ? handleSave() : setIsEditing(true)} style={styles.editButton}>
-                            <Text style={styles.editButtonText}>{isEditing ? "Save" : "Edit"}</Text>
+                            <Text style={styles.editButtonText}>{isEditing ? t('profile.save') : t('profile.edit')}</Text>
                         </Pressable>
                     </View>
 
@@ -373,48 +376,48 @@ export default function Profile() {
                             <View style={styles.sectionHeader}>
                                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                                     <Ionicons name="cloud-upload" size={24} color="#3b82f6" />
-                                    <Text style={styles.sectionTitle}>Backup Your Data</Text>
+                                    <Text style={styles.sectionTitle}>{t('profile.backupData')}</Text>
                                 </View>
                             </View>
                             <Text style={{ color: '#64748b', marginBottom: 16 }}>
-                                You are using a temporary guest account. Create an account to save your progress and access it on other devices.
+                                {t('profile.backupDataText')}
                             </Text>
                             <Pressable
                                 style={{ backgroundColor: '#3b82f6', padding: 12, borderRadius: 12, alignItems: 'center', marginBottom: 8 }}
                                 onPress={() => router.push("/auth/link-account")}
                             >
-                                <Text style={{ color: 'white', fontWeight: 'bold' }}>Create Account & Sync</Text>
+                                <Text style={{ color: 'white', fontWeight: 'bold' }}>{t('profile.createAccountSync')}</Text>
                             </Pressable>
                             <Pressable
                                 style={{ padding: 12, borderRadius: 12, alignItems: 'center' }}
                                 onPress={() => router.push("/auth/login")}
                             >
-                                <Text style={{ color: '#3b82f6', fontWeight: 'bold' }}>Existing User? Log In</Text>
+                                <Text style={{ color: '#3b82f6', fontWeight: 'bold' }}>{t('profile.existingUserLogin')}</Text>
                             </Pressable>
                         </View>
                     )}
 
                     <View style={styles.card}>
-                        <SectionHeader title="Personal Details" icon="person" />
+                        <SectionHeader title={t('profile.personalDetails')} icon="person" />
 
                         {isEditing ? (
                             <View style={styles.formGrid}>
                                 <InputField
-                                    label="Age"
+                                    label={t('profile.age')}
                                     value={formProfile.age}
                                     onChange={t => setFormProfile({ ...formProfile, age: t })}
                                     placeholder="30"
                                     numeric
                                 />
                                 <InputField
-                                    label="Height (cm)"
+                                    label={t('profile.height')}
                                     value={formProfile.heightCm}
                                     onChange={t => setFormProfile({ ...formProfile, heightCm: t })}
                                     placeholder="175"
                                     numeric
                                 />
                                 <InputField
-                                    label="Weight (kg)"
+                                    label={t('profile.weight')}
                                     value={formProfile.weightKg}
                                     onChange={t => setFormProfile({ ...formProfile, weightKg: t })}
                                     placeholder="75"
@@ -422,51 +425,61 @@ export default function Profile() {
                                 />
 
                                 <Pressable style={styles.selectorButton} onPress={() => setShowGenderModal(true)}>
-                                    <Text style={styles.selectorLabel}>Gender</Text>
-                                    <Text style={styles.selectorValue}>{localProfile.gender.charAt(0).toUpperCase() + localProfile.gender.slice(1)}</Text>
+                                    <Text style={styles.selectorLabel}>{t('profile.gender')}</Text>
+                                    <Text style={styles.selectorValue}>
+                                        {localProfile.gender === "male" ? t("profile.male") : t("profile.female")}
+                                    </Text>
                                 </Pressable>
 
                                 <Pressable style={styles.selectorButton} onPress={() => setShowActivityModal(true)}>
-                                    <Text style={styles.selectorLabel}>Activity</Text>
+                                    <Text style={styles.selectorLabel}>{t('profile.activity')}</Text>
                                     <Text style={styles.selectorValue}>
-                                        {localProfile.activity === "sedentary" ? "Sedentary" :
-                                            localProfile.activity === "light" ? "Light Activity" : "Active"}
+                                        {localProfile.activity === "sedentary"
+                                            ? t("profile.sedentary")
+                                            : localProfile.activity === "light"
+                                                ? t("profile.light")
+                                                : t("profile.active")}
                                     </Text>
                                 </Pressable>
 
+
                                 <Pressable style={styles.selectorButton} onPress={() => setShowGoalModal(true)}>
-                                    <Text style={styles.selectorLabel}>Goal</Text>
+                                    <Text style={styles.selectorLabel}>{t('profile.goal')}</Text>
                                     <Text style={styles.selectorValue}>
-                                        {localProfile.goal === "lose" ? "Lose Weight" :
-                                            localProfile.goal === "maintain" ? "Maintain" : "Gain Muscle"}
+                                        {localProfile.goal === "lose"
+                                            ? t("profile.lose")
+                                            : localProfile.goal === "maintain"
+                                                ? t("profile.maintain")
+                                                : t("profile.gain")}
                                     </Text>
+
                                 </Pressable>
                             </View>
                         ) : (
                             <View style={styles.readOnlyGrid}>
                                 <View style={styles.readOnlyItem}>
-                                    <Text style={styles.readOnlyLabel}>Age</Text>
+                                    <Text style={styles.readOnlyLabel}>{t('profile.age')}</Text>
                                     <Text style={styles.readOnlyValue}>{profile.age}</Text>
                                 </View>
                                 <View style={styles.readOnlyItem}>
-                                    <Text style={styles.readOnlyLabel}>Gender</Text>
-                                    <Text style={styles.readOnlyValue}>{profile.gender.charAt(0).toUpperCase() + profile.gender.slice(1)}</Text>
+                                    <Text style={styles.readOnlyLabel}>{t('profile.gender')}</Text>
+                                    <Text style={styles.readOnlyValue}>{localProfile.gender === "male" ? t("profile.male") : t("profile.female")}</Text>
                                 </View>
                                 <View style={styles.readOnlyItem}>
-                                    <Text style={styles.readOnlyLabel}>Height</Text>
+                                    <Text style={styles.readOnlyLabel}>{t('profile.height')}</Text>
                                     <Text style={styles.readOnlyValue}>{profile.heightCm} cm</Text>
                                 </View>
                                 <View style={styles.readOnlyItem}>
-                                    <Text style={styles.readOnlyLabel}>Weight</Text>
+                                    <Text style={styles.readOnlyLabel}>{t('profile.weight')}</Text>
                                     <Text style={styles.readOnlyValue}>{profile.weightKg} kg</Text>
                                 </View>
                                 <View style={styles.readOnlyItem}>
-                                    <Text style={styles.readOnlyLabel}>Activity</Text>
-                                    <Text style={styles.readOnlyValue}>{profile.activity.charAt(0).toUpperCase() + profile.activity.slice(1)}</Text>
+                                    <Text style={styles.readOnlyLabel}>{t('profile.activity')}</Text>
+                                    <Text style={styles.readOnlyValue}>{localProfile.activity === "sedentary" ? t("profile.sedentary") : localProfile.activity === "light" ? t("profile.light") : t("profile.active")}</Text>
                                 </View>
                                 <View style={styles.readOnlyItem}>
-                                    <Text style={styles.readOnlyLabel}>Goal</Text>
-                                    <Text style={styles.readOnlyValue}>{profile.goal.charAt(0).toUpperCase() + profile.goal.slice(1)}</Text>
+                                    <Text style={styles.readOnlyLabel}>{t('profile.goal')}</Text>
+                                    <Text style={styles.readOnlyValue}>{localProfile.goal === "lose" ? t("profile.lose") : localProfile.goal === "maintain" ? t("profile.maintain") : t("profile.gain")}</Text>
                                 </View>
                             </View>
                         )}
@@ -477,15 +490,15 @@ export default function Profile() {
                             <View style={styles.sectionHeader}>
                                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                                     <Ionicons name="notifications" size={20} color="#3b82f6" />
-                                    <Text style={styles.sectionTitle}>Reminders</Text>
+                                    <Text style={styles.sectionTitle}>{t('profile.reminders')}</Text>
                                 </View>
                             </View>
 
                             <View style={styles.card}>
                                 <View style={styles.goalRow}>
                                     <View>
-                                        <Text style={styles.goalLabel}>💧 Water Reminders</Text>
-                                        <Text style={styles.macroLabel}>Every {localProfile.reminders?.waterInterval || 2} hours</Text>
+                                        <Text style={styles.goalLabel}>{t('profile.waterReminders')}</Text>
+                                        <Text style={styles.macroLabel}>{t('profile.every')} {localProfile.reminders?.waterInterval || 2} {t('profile.hours')}</Text>
                                     </View>
                                     <Switch
                                         value={localProfile.reminders?.water ?? false}
@@ -512,7 +525,7 @@ export default function Profile() {
                                 {localProfile.reminders?.water && (
                                     <View style={{ marginTop: 12, gap: 12 }}>
                                         <View style={styles.timeRow}>
-                                            <Text style={styles.timeLabel}>Start Time</Text>
+                                            <Text style={styles.timeLabel}>{t('profile.startTime')}</Text>
                                             <DateTimePicker
                                                 value={(() => {
                                                     const [h, m] = (localProfile.reminders?.waterStart || "09:00").split(':').map(Number);
@@ -531,7 +544,7 @@ export default function Profile() {
                                             />
                                         </View>
                                         <View style={styles.timeRow}>
-                                            <Text style={styles.timeLabel}>End Time</Text>
+                                            <Text style={styles.timeLabel}>{t('profile.endTime')}</Text>
                                             <DateTimePicker
                                                 value={(() => {
                                                     const [h, m] = (localProfile.reminders?.waterEnd || "21:00").split(':').map(Number);
@@ -555,7 +568,7 @@ export default function Profile() {
                                 <View style={styles.divider} />
 
                                 <View style={styles.goalRow}>
-                                    <Text style={styles.goalLabel}>🍽️ Meal Reminders</Text>
+                                    <Text style={styles.goalLabel}>{t('profile.mealReminders')}</Text>
                                     <Switch
                                         value={localProfile.reminders?.meals ?? false}
                                         onValueChange={(val) => {
@@ -581,9 +594,9 @@ export default function Profile() {
                                 {localProfile.reminders?.meals && (
                                     <View style={{ marginTop: 12, gap: 12 }}>
                                         {[
-                                            { label: "Breakfast", key: "breakfastTime" },
-                                            { label: "Lunch", key: "lunchTime" },
-                                            { label: "Dinner", key: "dinnerTime" }
+                                            { label: t('profile.breakfastTime'), key: "breakfastTime" },
+                                            { label: t('profile.lunchTime'), key: "lunchTime" },
+                                            { label: t('profile.dinnerTime'), key: "dinnerTime" }
                                         ].map((meal) => (
                                             <View key={meal.key} style={styles.timeRow}>
                                                 <Text style={styles.timeLabel}>{meal.label}</Text>
@@ -612,22 +625,22 @@ export default function Profile() {
                     )}
 
                     <View style={styles.card}>
-                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16, gap: 12, flexWrap: "wrap" }}>
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                                 <Ionicons name="trophy" size={20} color="#3b82f6" />
-                                <Text style={styles.sectionTitle}>Nutrition Goals</Text>
+                                <Text style={styles.sectionTitle}>{t('profile.nutritionGoals')}</Text>
                             </View>
                             {isEditing ? (
                                 <Pressable onPress={toggleStrategy} style={styles.strategyButton}>
-                                    <Text style={styles.strategyText}>
-                                        {localGoals.strategy === "auto" ? "Auto-Calculated" : "Manual"}
+                                    <Text style={styles.strategyText} numberOfLines={1}>
+                                        {localGoals.strategy === "auto" ? t("profile.autoCalculated") : t("profile.manual")}
                                     </Text>
                                     <Ionicons name="swap-horizontal" size={16} color="#3b82f6" />
                                 </Pressable>
                             ) : (
                                 <View style={styles.strategyBadge}>
                                     <Text style={styles.strategyBadgeText}>
-                                        {goals.strategy === "auto" ? "Auto-Calculated" : "Manual"}
+                                        {goals.strategy === "auto" ? t("profile.autoCalculated") : t("profile.manual")}
                                     </Text>
                                 </View>
                             )}
@@ -637,7 +650,7 @@ export default function Profile() {
                             <View style={styles.infoBox}>
                                 <Ionicons name="information-circle" size={20} color="#3b82f6" />
                                 <Text style={styles.infoText}>
-                                    Goals are calculated based on your profile details using the Harris-Benedict formula.
+                                    {t("profile.autoCalculatedInfo")}
                                 </Text>
                             </View>
                         )}
@@ -645,28 +658,28 @@ export default function Profile() {
                         {isEditing && goals.strategy === "manual" ? (
                             <View style={styles.formGrid}>
                                 <InputField
-                                    label="Daily Calories"
+                                    label={t("profile.dailyCalories")}
                                     value={formProfile.calories}
                                     onChange={t => setFormProfile({ ...formProfile, calories: t })}
                                     placeholder="2000"
                                     numeric
                                 />
                                 <InputField
-                                    label="Protein (g)"
+                                    label={t("profile.protein")}
                                     value={formProfile.protein}
                                     onChange={t => setFormProfile({ ...formProfile, protein: t })}
                                     placeholder="150"
                                     numeric
                                 />
                                 <InputField
-                                    label="Carbs (g)"
+                                    label={t("profile.carbs")}
                                     value={formProfile.carbs}
                                     onChange={t => setFormProfile({ ...formProfile, carbs: t })}
                                     placeholder="200"
                                     numeric
                                 />
                                 <InputField
-                                    label="Fat (g)"
+                                    label={t("profile.fat")}
                                     value={formProfile.fat}
                                     onChange={t => setFormProfile({ ...formProfile, fat: t })}
                                     placeholder="65"
@@ -676,27 +689,27 @@ export default function Profile() {
                         ) : (
                             <View>
                                 <View style={styles.goalRow}>
-                                    <Text style={styles.goalLabel}>Calories</Text>
+                                    <Text style={styles.goalLabel}>{t("profile.calories")}</Text>
                                     <Text style={styles.goalValue}>{goals.calories} kcal</Text>
                                 </View>
                                 <View style={styles.divider} />
                                 <View style={styles.macroRow}>
                                     <View style={styles.macroItem}>
                                         <Text style={styles.macroValue}>{goals.protein}g</Text>
-                                        <Text style={styles.macroLabel}>Protein</Text>
+                                        <Text style={styles.macroLabel}>{t("profile.protein")}</Text>
                                     </View>
                                     <View style={styles.macroItem}>
                                         <Text style={styles.macroValue}>{goals.carbs}g</Text>
-                                        <Text style={styles.macroLabel}>Carbs</Text>
+                                        <Text style={styles.macroLabel}>{t("profile.carbs")}</Text>
                                     </View>
                                     <View style={styles.macroItem}>
                                         <Text style={styles.macroValue}>{goals.fat}g</Text>
-                                        <Text style={styles.macroLabel}>Fat</Text>
+                                        <Text style={styles.macroLabel}>{t("profile.fat")}</Text>
                                     </View>
                                 </View>
                                 <View style={styles.divider} />
                                 <View style={styles.goalRow}>
-                                    <Text style={styles.goalLabel}>Water Goal</Text>
+                                    <Text style={styles.goalLabel}>{t("profile.waterGoal")}</Text>
                                     <Text style={[styles.goalValue, { color: "#0ea5e9" }]}>{goals.water || 2500} ml</Text>
                                 </View>
                             </View>
@@ -705,9 +718,9 @@ export default function Profile() {
                         {isEditing && (
                             <View style={[styles.formGrid, { marginTop: 16 }]}>
                                 <View style={styles.divider} />
-                                <Text style={[styles.sectionTitle, { fontSize: 16 }]}>Hydration Goal</Text>
+                                <Text style={[styles.sectionTitle, { fontSize: 16 }]}>{t("profile.hydrationGoal")}</Text>
                                 <InputField
-                                    label="Daily Water (ml)"
+                                    label={t("profile.dailyWater")}
                                     value={formProfile.water}
                                     onChange={t => setFormProfile({ ...formProfile, water: t })}
                                     placeholder="2500"
@@ -721,23 +734,69 @@ export default function Profile() {
                         <View style={styles.sectionHeader}>
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                                 <Ionicons name="trophy" size={20} color="#f59e0b" />
-                                <Text style={styles.sectionTitle}>Achievements</Text>
+                                <Text style={styles.sectionTitle}>{t("profile.achievements")}</Text>
                             </View>
 
                         </View>
 
                         <View style={styles.badgesGrid}>
                             {ALL_BADGES.map((badge) => {
-                                const isUnlocked = profile.unlockedBadges?.some(b => b.badgeId === badge.id);
+                                const isUnlocked = profile.unlockedBadges?.some((b) => b.badgeId === badge.id);
+
                                 return (
-                                    <View key={badge.id} style={[styles.badgeItem, !isUnlocked && styles.badgeLocked]}>
+                                    <View
+                                        key={badge.id}
+                                        style={[styles.badgeItem, !isUnlocked && styles.badgeLocked]}
+                                    >
                                         <View style={[styles.badgeIcon, !isUnlocked && styles.badgeIconLocked]}>
-                                            <Ionicons name={badge.icon as any} size={28} color={isUnlocked ? "#f59e0b" : "#94a3b8"} />
+                                            <Ionicons
+                                                name={badge.icon as any}
+                                                size={28}
+                                                color={isUnlocked ? "#f59e0b" : "#94a3b8"}
+                                            />
                                         </View>
-                                        <Text style={styles.badgeText}>{badge.title}</Text>
+
+                                        <Text style={styles.badgeText}>{t(badge.titleKey)}</Text>
                                     </View>
                                 );
                             })}
+                        </View>
+
+                    </View>
+
+                    {/* Language Settings */}
+                    <View style={styles.card}>
+                        <View style={styles.sectionHeader}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                <Ionicons name="language" size={20} color="#8b5cf6" />
+                                <Text style={styles.sectionTitle}>Dil / Language</Text>
+                            </View>
+                        </View>
+                        <View style={{ flexDirection: "row", gap: 12, marginTop: 12 }}>
+                            <Pressable
+                                onPress={() => setLanguage('tr')}
+                                style={[
+                                    styles.languageButton,
+                                    language === 'tr' && styles.languageButtonActive
+                                ]}
+                            >
+                                <Text style={[
+                                    styles.languageButtonText,
+                                    language === 'tr' && styles.languageButtonTextActive
+                                ]}>🇹🇷 Türkçe</Text>
+                            </Pressable>
+                            <Pressable
+                                onPress={() => setLanguage('en')}
+                                style={[
+                                    styles.languageButton,
+                                    language === 'en' && styles.languageButtonActive
+                                ]}
+                            >
+                                <Text style={[
+                                    styles.languageButtonText,
+                                    language === 'en' && styles.languageButtonTextActive
+                                ]}>🇬🇧 English</Text>
+                            </Pressable>
                         </View>
                     </View>
 
@@ -786,8 +845,8 @@ export default function Profile() {
 
             <SuccessModal
                 visible={showSuccessModal}
-                title="Profile Saved"
-                message="Your goals have been updated based on your new profile settings."
+                title={t("profile.successTitle")}
+                message={t("profile.successMessage")}
                 onClose={() => setShowSuccessModal(false)}
             />
 
@@ -1092,6 +1151,25 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: "700",
         color: "#ef4444",
+    },
+    languageButton: {
+        flex: 1,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        backgroundColor: "#f1f5f9",
+        alignItems: "center",
+    },
+    languageButtonActive: {
+        backgroundColor: "#8b5cf6",
+    },
+    languageButtonText: {
+        fontSize: 15,
+        fontWeight: "600",
+        color: "#64748b",
+    },
+    languageButtonTextActive: {
+        color: "white",
     },
 });
 

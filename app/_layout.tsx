@@ -4,6 +4,7 @@ import { ActivityIndicator, View } from "react-native";
 import { UpgradePrompt } from "../components/UpgradePrompt";
 import { AuthProvider, useAuth } from "../context/AuthContext";
 import { HealthProvider } from "../context/HealthContext";
+import { LanguageProvider } from "../context/LanguageContext";
 import { MealProvider, useMeals } from "../context/MealContext";
 
 function RootLayoutNav() {
@@ -81,12 +82,15 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <MealProvider>
-        <HealthProvider>
-          <RootLayoutNav />
-        </HealthProvider>
-      </MealProvider>
-    </AuthProvider>
+    <LanguageProvider>
+      <AuthProvider>
+        <MealProvider>
+          <HealthProvider>
+            <RootLayoutNav />
+          </HealthProvider>
+        </MealProvider>
+      </AuthProvider>
+    </LanguageProvider>
   );
 }
+

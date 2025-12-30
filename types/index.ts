@@ -18,12 +18,13 @@ export type BadgeCondition =
     | { type: 'value'; metric: 'weight_loss_kg'; value: number }
     | string;
 
+
 export type Badge = {
     id: string;
-    title: string;
-    description: string;
-    icon: string; // Ionicons name
-    condition: BadgeCondition;
+    icon: string;
+    condition: any;
+    titleKey: string;
+    descKey: string;
 };
 
 export type Profile = {

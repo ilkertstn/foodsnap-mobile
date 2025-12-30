@@ -10,6 +10,7 @@ import DaySummaryModal from "../../components/DaySummaryModal";
 import SuccessModal from "../../components/SuccessModal";
 import WaterTracker from "../../components/WaterTracker";
 import { useHealth } from "../../context/HealthContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { useMeals } from "../../context/MealContext";
 import { FoodEntry, MealType } from "../../types";
 import { formatDate, getAdjustedDate, isAdjustedToday } from "../../utils/date";
@@ -33,12 +34,13 @@ const MacroBar = ({ label, value, total, color }: { label: string, value: number
 
 
 const MealSection = ({ title, meals, onDelete }: { title: string, meals: FoodEntry[] | undefined, onDelete: (id: string) => void }) => {
+    const { t } = useLanguage();
     if (!meals || meals.length === 0) {
         return (
             <View style={styles.sectionContainer}>
                 <Text style={styles.sectionTitle}>{title}</Text>
                 <View style={styles.emptyState}>
-                    <Text style={styles.emptyStateText}>No meals logged</Text>
+                    <Text style={styles.emptyStateText}>{t('dashboard.no_meals_logged')}</Text>
                 </View>
             </View>
         );
@@ -68,6 +70,7 @@ const MealSection = ({ title, meals, onDelete }: { title: string, meals: FoodEnt
 // Health/Steps Widget
 const StepsWidget = () => {
     const { healthData, isEnabled, isAvailable, isLoading, enableHealthIntegration } = useHealth();
+    const { t } = useLanguage();
 
     // Demo mode for Expo Go (when native health modules aren't available)
     const DEMO_MODE = !isAvailable;
@@ -81,7 +84,7 @@ const StepsWidget = () => {
             <View style={styles.healthCard}>
                 <View style={styles.healthHeader}>
                     <Ionicons name="footsteps" size={24} color="#8b5cf6" />
-                    <Text style={styles.healthTitle}>Connect Health</Text>
+                    <Text style={styles.healthTitle}>{t('dashboard.activity_title')}</Text>
                 </View>
                 <Text style={styles.healthDescription}>
                     Sync your steps and activity from Apple Health or Google Fit
@@ -110,7 +113,7 @@ const StepsWidget = () => {
         <View style={styles.healthCard}>
             <View style={styles.healthHeader}>
                 <Ionicons name="footsteps" size={24} color="#8b5cf6" />
-                <Text style={styles.healthTitle}>Today's Activity</Text>
+                <Text style={styles.healthTitle}>{t('dashboard.activity_title')}</Text>
                 {DEMO_MODE && (
                     <View style={{ backgroundColor: '#fef3c7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, marginLeft: 8 }}>
                         <Text style={{ fontSize: 10, color: '#d97706', fontWeight: '600' }}>DEMO</Text>
@@ -120,17 +123,17 @@ const StepsWidget = () => {
             <View style={styles.healthStats}>
                 <View style={styles.healthStat}>
                     <Text style={styles.healthStatValue}>{displayData.steps.toLocaleString()}</Text>
-                    <Text style={styles.healthStatLabel}>Steps</Text>
+                    <Text style={styles.healthStatLabel}>{t('dashboard.steps')}</Text>
                 </View>
                 <View style={styles.healthStatDivider} />
                 <View style={styles.healthStat}>
                     <Text style={styles.healthStatValue}>{formatDistance(displayData.distance)}</Text>
-                    <Text style={styles.healthStatLabel}>Distance</Text>
+                    <Text style={styles.healthStatLabel}>{t('dashboard.distance')}</Text>
                 </View>
                 <View style={styles.healthStatDivider} />
                 <View style={styles.healthStat}>
                     <Text style={styles.healthStatValue}>{Math.round(displayData.activeCalories)}</Text>
-                    <Text style={styles.healthStatLabel}>Active Cal</Text>
+                    <Text style={styles.healthStatLabel}>{t('dashboard.active_cal')}</Text>
                 </View>
             </View>
         </View>
@@ -142,6 +145,7 @@ export default function Dashboard() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const { getDailySummary, logs, removeEntry, goals, addExercise, removeExercise, streaks } = useMeals();
+    const { t } = useLanguage();
 
 
     const [selectedDate, setSelectedDate] = useState(getAdjustedDate());
@@ -183,12 +187,12 @@ export default function Dashboard() {
                 {/* Header with Date Nav */}
                 <View style={styles.header}>
                     <View>
-                        <Text style={styles.headerSub}>Daily Overview</Text>
+                        <Text style={styles.headerSub}>{t('dashboard.daily_summary')}</Text>
                         <View style={styles.dateNav}>
                             <Pressable onPress={() => changeDate(-1)} style={styles.navArrow}>
                                 <Ionicons name="chevron-back" size={20} color="#64748b" />
                             </Pressable>
-                            <Text style={styles.headerTitle}>{isAdjustedToday(selectedDate) ? "Today" : formatDate(selectedDate)}</Text>
+                            <Text style={styles.headerTitle}>{isAdjustedToday(selectedDate) ? t('dashboard.today') : formatDate(selectedDate)}</Text>
                             <Pressable onPress={() => changeDate(1)} style={[styles.navArrow, isAdjustedToday(selectedDate) && styles.disabledArrow]} disabled={isAdjustedToday(selectedDate)}>
                                 <Ionicons name="chevron-forward" size={20} color={isAdjustedToday(selectedDate) ? "#cbd5e1" : "#64748b"} />
                             </Pressable>
@@ -203,7 +207,7 @@ export default function Dashboard() {
                 <View style={styles.summaryCard}>
                     <View style={styles.caloriesRow}>
                         <View>
-                            <Text style={styles.caloriesLabel}>Calories</Text>
+                            <Text style={styles.caloriesLabel}>{t('dashboard.calories')}</Text>
                             <Text style={styles.caloriesValue}>
                                 {Math.round(summary.consumed.calories)}
                                 <Text style={styles.caloriesTotal}> / {goals.calories}</Text>
@@ -212,15 +216,15 @@ export default function Dashboard() {
                         <View style={styles.ringPlaceholder}>
 
                             <Text style={[styles.ringText, { color: summary.remaining.calories < 0 ? "#ef4444" : "#10b981" }]}>
-                                {summary.remaining.calories} left
+                                {summary.remaining.calories} {t('dashboard.remaining')}
                             </Text>
                         </View>
                     </View>
 
                     <View style={styles.macrosContainer}>
-                        <MacroBar label="Protein" value={summary.consumed.protein} total={goals.protein} color="#3b82f6" />
-                        <MacroBar label="Carbs" value={summary.consumed.carbs} total={goals.carbs} color="#10b981" />
-                        <MacroBar label="Fat" value={summary.consumed.fat} total={goals.fat} color="#f59e0b" />
+                        <MacroBar label={t('dashboard.protein')} value={summary.consumed.protein} total={goals.protein} color="#3b82f6" />
+                        <MacroBar label={t('dashboard.carbs')} value={summary.consumed.carbs} total={goals.carbs} color="#10b981" />
+                        <MacroBar label={t('dashboard.fat')} value={summary.consumed.fat} total={goals.fat} color="#f59e0b" />
                     </View>
                 </View>
 
@@ -230,23 +234,39 @@ export default function Dashboard() {
                     <View style={styles.streakItem}>
                         <Ionicons name="flame" size={20} color="#f59e0b" />
                         <Text style={styles.streakText}>
-                            {streaks.log} Day Log Streak
+                            {streaks.log} {t("dashboard.streak_day")}
                         </Text>
                     </View>
-                    {/* Progress Hint (if logs < 2 today) */}
+
                     {(() => {
                         const today = new Date().toISOString().split('T')[0];
                         const log = logs[today];
-                        const mealCount = log ? (log.meals.breakfast.length + log.meals.lunch.length + log.meals.dinner.length + log.meals.snack.length) : 0;
+                        const mealCount = log
+                            ? (log.meals.breakfast.length +
+                                log.meals.lunch.length +
+                                log.meals.dinner.length +
+                                log.meals.snack.length)
+                            : 0;
+
                         if (mealCount < 2) {
+                            const remaining = 2 - mealCount;
+
                             return (
                                 <Text style={styles.streakHint}>
-                                    Logging {2 - mealCount} more meal{2 - mealCount > 1 ? 's' : ''} keeps it going!
+                                    {remaining === 1
+                                        ? t("dashboard.streak_keep_going_single")
+                                        : `${remaining} ${t("dashboard.streak_keep_going_multi").replace("{{count}}", remaining.toString())}`}
                                 </Text>
                             );
                         }
-                        return <Text style={styles.streakHint}>Streak safe for today! ✅</Text>;
+
+                        return (
+                            <Text style={styles.streakHint}>
+                                {t("dashboard.streak_safe_today")}
+                            </Text>
+                        );
                     })()}
+
                 </View>
 
 
@@ -254,14 +274,14 @@ export default function Dashboard() {
                     <View style={styles.activeHeader}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                             <Ionicons name="flame" size={24} color="#f59e0b" />
-                            <Text style={styles.activeTitle}>Active Calories</Text>
+                            <Text style={styles.activeTitle}>{t('dashboard.active_calories')}</Text>
                         </View>
                         <Pressable onPress={() => setShowExerciseModal(true)} style={styles.addExerciseButton}>
                             <Ionicons name="add" size={20} color="white" />
                         </Pressable>
                     </View>
                     <View style={styles.activeContent}>
-                        <Text style={styles.activeValue}>{Math.round(summary.burned)} <Text style={styles.activeUnit}>kcal burned</Text></Text>
+                        <Text style={styles.activeValue}>{Math.round(summary.burned)} <Text style={styles.activeUnit}>{t('dashboard.kcal_burned')}</Text></Text>
                         {dayLog?.exercises && dayLog.exercises.length > 0 && (
                             <View style={{ marginTop: 12, gap: 8 }}>
                                 {dayLog.exercises.map(exercise => (
@@ -299,8 +319,8 @@ export default function Dashboard() {
                             <Ionicons name="calendar" size={28} color="white" />
                         </View>
                         <View style={styles.mealPlanText}>
-                            <Text style={styles.mealPlanTitle}>AI Meal Plan</Text>
-                            <Text style={styles.mealPlanSubtitle}>Get your personalized weekly plan</Text>
+                            <Text style={styles.mealPlanTitle}>{t('dashboard.ai_meal_plan')}</Text>
+                            <Text style={styles.mealPlanSubtitle}>{t('dashboard.get_weekly_plan')}</Text>
                         </View>
                     </View>
                     <Ionicons name="chevron-forward" size={24} color="#10b981" />
@@ -308,22 +328,22 @@ export default function Dashboard() {
 
 
                 <MealSection
-                    title="Breakfast"
+                    title={t('meal_plan.breakfast')}
                     meals={dayLog?.meals.breakfast}
                     onDelete={(id) => handleDelete("breakfast", id)}
                 />
                 <MealSection
-                    title="Lunch"
+                    title={t('meal_plan.lunch')}
                     meals={dayLog?.meals.lunch}
                     onDelete={(id) => handleDelete("lunch", id)}
                 />
                 <MealSection
-                    title="Dinner"
+                    title={t('meal_plan.dinner')}
                     meals={dayLog?.meals.dinner}
                     onDelete={(id) => handleDelete("dinner", id)}
                 />
                 <MealSection
-                    title="Snacks"
+                    title={t('meal_plan.snack')}
                     meals={dayLog?.meals.snack}
                     onDelete={(id) => handleDelete("snack", id)}
                 />
@@ -331,7 +351,7 @@ export default function Dashboard() {
                 {
                     isAdjustedToday(selectedDate) && (
                         <Pressable style={styles.endDayButton} onPress={handleEndDay}>
-                            <Text style={styles.endDayText}>Complete Day</Text>
+                            <Text style={styles.endDayText}>{t('dashboard.complete_day')}</Text>
                         </Pressable>
                     )
                 }

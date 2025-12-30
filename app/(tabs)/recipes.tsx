@@ -13,6 +13,7 @@ import {
     View
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useLanguage } from "../../context/LanguageContext";
 import { useMeals } from "../../context/MealContext";
 import { DEMO_RECIPES, getRecipeDetails, isApiConfigured, Recipe, RecipeDetail, searchRecipesByNutrients } from "../../lib/recipes";
 import { getAdjustedDate } from "../../utils/date";
@@ -20,12 +21,13 @@ import { getAdjustedDate } from "../../utils/date";
 export default function RecipesScreen() {
     const insets = useSafeAreaInsets();
     const { getDailySummary, goals } = useMeals();
+    const { t } = useLanguage();
 
     const [recipes, setRecipes] = useState<Recipe[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedRecipe, setSelectedRecipe] = useState<RecipeDetail | null>(null);
     const [loadingDetail, setLoadingDetail] = useState(false);
-    const [loadingText, setLoadingText] = useState("Finding suggestions...");
+    const [loadingText, setLoadingText] = useState("");
 
     const today = getAdjustedDate();
     const summary = getDailySummary(today);
@@ -42,16 +44,16 @@ export default function RecipesScreen() {
 
     const loadRecipes = async () => {
         setLoading(true);
-        setLoadingText("Checking remaining macros...");
+        setLoadingText(t('recipes.loading_check'));
 
         try {
             await new Promise(r => setTimeout(r, 600));
-            setLoadingText("Scanning recipe database...");
+            setLoadingText(t('recipes.loading_scan'));
             await new Promise(r => setTimeout(r, 600));
 
 
             const results = await searchRecipesByNutrients({
-                maxCalories: Math.min(remainingCalories, 800), 
+                maxCalories: Math.min(remainingCalories, 800),
                 maxCarbs: Math.min(remainingCarbs, 100),
                 maxProtein: Math.min(remainingProtein + 20, 60),
                 minProtein: 10,
@@ -65,7 +67,7 @@ export default function RecipesScreen() {
             setRecipes(DEMO_RECIPES);
         } finally {
             setLoading(false);
-            setLoadingText("Finding suggestions...");
+            setLoadingText(t('recipes.loading_find'));
         }
     };
 
@@ -104,15 +106,15 @@ export default function RecipesScreen() {
             <ScrollView contentContainerStyle={styles.content}>
 
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Recipes</Text>
+                    <Text style={styles.headerTitle}>{t('recipes.title')}</Text>
                     <Text style={styles.headerSubtitle}>
-                        Suggestions based on your remaining macros
+                        {t('recipes.subtitle')}
                     </Text>
                 </View>
 
 
                 <View style={styles.macroCard}>
-                    <Text style={styles.macroCardTitle}>Remaining Today</Text>
+                    <Text style={styles.macroCardTitle}>{t('recipes.remaining_today')}</Text>
                     <View style={styles.macroRow}>
                         <View style={styles.macroItem}>
                             <Text style={styles.macroValue}>{Math.round(remainingCalories)}</Text>
@@ -121,22 +123,22 @@ export default function RecipesScreen() {
                         <View style={styles.macroDivider} />
                         <View style={styles.macroItem}>
                             <Text style={[styles.macroValue, { color: "#ef4444" }]}>{Math.round(remainingProtein)}g</Text>
-                            <Text style={styles.macroLabel}>Protein</Text>
+                            <Text style={styles.macroLabel}>{t('dashboard.protein')}</Text>
                         </View>
                         <View style={styles.macroDivider} />
                         <View style={styles.macroItem}>
                             <Text style={[styles.macroValue, { color: "#f59e0b" }]}>{Math.round(remainingCarbs)}g</Text>
-                            <Text style={styles.macroLabel}>Carbs</Text>
+                            <Text style={styles.macroLabel}>{t('dashboard.carbs')}</Text>
                         </View>
                         <View style={styles.macroDivider} />
                         <View style={styles.macroItem}>
                             <Text style={[styles.macroValue, { color: "#8b5cf6" }]}>{Math.round(remainingFat)}g</Text>
-                            <Text style={styles.macroLabel}>Fat</Text>
+                            <Text style={styles.macroLabel}>{t('dashboard.fat')}</Text>
                         </View>
                     </View>
                 </View>
 
-                <Text style={styles.sectionTitle}>Suggested Recipes</Text>
+                <Text style={styles.sectionTitle}>{t('recipes.suggested')}</Text>
 
                 {loading ? (
                     <View style={styles.loadingContainer}>
@@ -189,7 +191,7 @@ export default function RecipesScreen() {
 
                 <Pressable style={styles.refreshButton} onPress={loadRecipes}>
                     <Ionicons name="refresh" size={20} color="#8b5cf6" />
-                    <Text style={styles.refreshButtonText}>Load More Recipes</Text>
+                    <Text style={styles.refreshButtonText}>{t('recipes.load_more')}</Text>
                 </Pressable>
             </ScrollView>
 
@@ -227,28 +229,28 @@ export default function RecipesScreen() {
                                 </View>
                                 <View style={styles.modalMacroItem}>
                                     <Text style={styles.modalMacroValue}>{selectedRecipe.protein}</Text>
-                                    <Text style={styles.modalMacroLabel}>Protein</Text>
+                                    <Text style={styles.modalMacroLabel}>{t('dashboard.protein')}</Text>
                                 </View>
                                 <View style={styles.modalMacroItem}>
                                     <Text style={styles.modalMacroValue}>{selectedRecipe.carbs}</Text>
-                                    <Text style={styles.modalMacroLabel}>Carbs</Text>
+                                    <Text style={styles.modalMacroLabel}>{t('dashboard.carbs')}</Text>
                                 </View>
                                 <View style={styles.modalMacroItem}>
                                     <Text style={styles.modalMacroValue}>{selectedRecipe.fat}</Text>
-                                    <Text style={styles.modalMacroLabel}>Fat</Text>
+                                    <Text style={styles.modalMacroLabel}>{t('dashboard.fat')}</Text>
                                 </View>
                             </View>
 
                             {selectedRecipe.summary && (
                                 <View style={styles.modalSection}>
-                                    <Text style={styles.modalSectionTitle}>About</Text>
+                                    <Text style={styles.modalSectionTitle}>{t('recipes.detail_about')}</Text>
                                     <Text style={styles.modalText}>{selectedRecipe.summary}</Text>
                                 </View>
                             )}
 
                             {selectedRecipe.extendedIngredients && selectedRecipe.extendedIngredients.length > 0 && (
                                 <View style={styles.modalSection}>
-                                    <Text style={styles.modalSectionTitle}>Ingredients</Text>
+                                    <Text style={styles.modalSectionTitle}>{t('recipes.detail_ingredients')}</Text>
                                     {selectedRecipe.extendedIngredients.map((ing, idx) => (
                                         <Text key={idx} style={styles.ingredientText}>
                                             • {ing.original}
@@ -259,7 +261,7 @@ export default function RecipesScreen() {
 
                             {selectedRecipe.instructions && (
                                 <View style={styles.modalSection}>
-                                    <Text style={styles.modalSectionTitle}>Instructions</Text>
+                                    <Text style={styles.modalSectionTitle}>{t('recipes.detail_instructions')}</Text>
                                     <Text style={styles.modalText}>{selectedRecipe.instructions}</Text>
                                 </View>
                             )}

@@ -14,29 +14,47 @@ import {
     View
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useLanguage } from "../context/LanguageContext";
 import { useMeals } from "../context/MealContext";
 import {
     generateMealPlan,
     generateShoppingList,
-    getDayName,
-    getShortDayName,
     MealPlan,
     MealPlanDay,
     ShoppingListItem
 } from "../lib/mealPlan";
 import { Recipe } from "../lib/recipes";
 
+export const getDayKey = (date: string) => {
+    const day = new Date(date).getDay();
+
+    const map = [
+        "sunday",
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday"
+    ];
+
+    return map[day];
+};
+
+
 export default function MealPlanScreen() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const { goals } = useMeals();
+    const { t } = useLanguage();
 
     const [mealPlan, setMealPlan] = useState<MealPlan | null>(null);
     const [loading, setLoading] = useState(true);
     const [selectedDay, setSelectedDay] = useState<MealPlanDay | null>(null);
     const [showShoppingList, setShowShoppingList] = useState(false);
     const [shoppingList, setShoppingList] = useState<ShoppingListItem[]>([]);
-    const [loadingText, setLoadingText] = useState("Generating your personalized meal plan...");
+    const [loadingText, setLoadingText] = useState("");
+
 
     useEffect(() => {
         loadMealPlan();
@@ -48,6 +66,9 @@ export default function MealPlanScreen() {
             const plan = await generateMealPlan(goals);
             setMealPlan(plan);
             setShoppingList(generateShoppingList(plan));
+            if (plan.days.length > 0) {
+                setSelectedDay(plan.days[0]);
+            }
         } catch (e) {
             console.error("Error generating meal plan:", e);
         } finally {
@@ -57,13 +78,13 @@ export default function MealPlanScreen() {
 
     const regeneratePlan = async () => {
         setLoading(true);
-        setLoadingText("Analyzing your macro goals...");
+        setLoadingText(t('meal_plan.loading_analyze'));
         try {
             // AI Simulation Steps
             await new Promise(resolve => setTimeout(resolve, 800));
-            setLoadingText("Scanning recipe database...");
+            setLoadingText(t('meal_plan.loading_scan'));
             await new Promise(resolve => setTimeout(resolve, 800));
-            setLoadingText("Optimizing daily variety...");
+            setLoadingText(t('meal_plan.loading_optimize'));
             await new Promise(resolve => setTimeout(resolve, 800));
 
             // Capture the currently viewed date
@@ -91,7 +112,7 @@ export default function MealPlanScreen() {
         } finally {
             setLoading(false);
 
-            setTimeout(() => setLoadingText("Generating your personalized meal plan..."), 500);
+            setTimeout(() => setLoadingText(t('meal_plan.loading_gen')), 500);
         }
     };
 
@@ -154,7 +175,7 @@ export default function MealPlanScreen() {
                 <Pressable onPress={() => router.back()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={24} color="#1e293b" />
                 </Pressable>
-                <Text style={styles.headerTitle}>Meal Plan</Text>
+                <Text style={styles.headerTitle}>{t('meal_plan.title')}</Text>
                 <Pressable onPress={() => setShowShoppingList(true)} style={styles.cartButton}>
                     <Ionicons name="cart" size={24} color="#1e293b" />
                 </Pressable>
@@ -169,7 +190,7 @@ export default function MealPlanScreen() {
                 <ScrollView contentContainerStyle={styles.content}>
 
                     <View style={styles.goalsCard}>
-                        <Text style={styles.goalsTitle}>Daily Target</Text>
+                        <Text style={styles.goalsTitle}>{t('meal_plan.daily_target')}</Text>
                         <View style={styles.goalsRow}>
                             <View style={styles.goalItem}>
                                 <Text style={styles.goalValue}>{goals.calories}</Text>
@@ -178,24 +199,24 @@ export default function MealPlanScreen() {
                             <View style={styles.goalDivider} />
                             <View style={styles.goalItem}>
                                 <Text style={[styles.goalValue, { color: "#ef4444" }]}>{goals.protein}g</Text>
-                                <Text style={styles.goalLabel}>Protein</Text>
+                                <Text style={styles.goalLabel}>{t('dashboard.protein')}</Text>
                             </View>
                             <View style={styles.goalDivider} />
                             <View style={styles.goalItem}>
                                 <Text style={[styles.goalValue, { color: "#f59e0b" }]}>{goals.carbs}g</Text>
-                                <Text style={styles.goalLabel}>Carbs</Text>
+                                <Text style={styles.goalLabel}>{t('dashboard.carbs')}</Text>
                             </View>
                             <View style={styles.goalDivider} />
                             <View style={styles.goalItem}>
                                 <Text style={[styles.goalValue, { color: "#8b5cf6" }]}>{goals.fat}g</Text>
-                                <Text style={styles.goalLabel}>Fat</Text>
+                                <Text style={styles.goalLabel}>{t('dashboard.fat')}</Text>
                             </View>
                         </View>
                     </View>
 
 
                     <View style={styles.weekContainer}>
-                        <Text style={styles.sectionTitle}>This Week</Text>
+                        <Text style={styles.sectionTitle}>{t('meal_plan.this_week')}</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.daysRow}>
                             {mealPlan.days.map((day, index) => {
                                 const isToday = day.date === new Date().toISOString().split('T')[0];
@@ -214,7 +235,7 @@ export default function MealPlanScreen() {
                                             isToday && styles.dayChipTextToday,
                                             selectedDay?.date === day.date && styles.dayChipTextSelected,
                                         ]}>
-                                            {getShortDayName(day.date)}
+                                            {t(`meal_plan.short_days.${getDayKey(day.date)}`)}
                                         </Text>
                                         <Text style={[
                                             styles.dayChipCals,
@@ -231,20 +252,29 @@ export default function MealPlanScreen() {
                     {/* Selected Day Meals */}
                     {selectedDay && (
                         <View style={styles.dayMeals}>
-                            <Text style={styles.sectionTitle}>{getDayName(selectedDay.date)}'s Meals</Text>
+                            <Text style={styles.sectionTitle}>
+                                {t("meal_plan.meals_of_day", {
+                                    day: t(`meal_plan.days.${getDayKey(selectedDay.date)}`)
+                                })}
+                            </Text>
 
                             <View style={styles.daySummary}>
                                 <Text style={styles.daySummaryText}>
-                                    Total: {selectedDay.totalCalories} kcal • P: {selectedDay.totalProtein}g • C: {selectedDay.totalCarbs}g • F: {selectedDay.totalFat}g
+                                    {t("meal_plan.total_summary", {
+                                        cal: selectedDay.totalCalories,
+                                        p: selectedDay.totalProtein,
+                                        c: selectedDay.totalCarbs,
+                                        f: selectedDay.totalFat
+                                    })}
                                 </Text>
                             </View>
 
-                            {renderMealCard(selectedDay.breakfast, 'Breakfast', 'sunny')}
-                            {renderMealCard(selectedDay.lunch, 'Lunch', 'restaurant')}
-                            {renderMealCard(selectedDay.dinner, 'Dinner', 'moon')}
+                            {renderMealCard(selectedDay.breakfast, t('common.breakfast'), 'sunny')}
+                            {renderMealCard(selectedDay.lunch, t('common.lunch'), 'restaurant')}
+                            {renderMealCard(selectedDay.dinner, t('common.dinner'), 'moon')}
                             {selectedDay.snacks.map((snack, i) => (
                                 <React.Fragment key={`snack-${i}`}>
-                                    {renderMealCard(snack, `Snack ${i + 1}`, 'cafe')}
+                                    {renderMealCard(snack, `${t('common.snack')} ${i + 1}`, 'cafe')}
                                 </React.Fragment>
                             ))}
                         </View>
@@ -253,20 +283,29 @@ export default function MealPlanScreen() {
 
                     {!selectedDay && mealPlan.days.length > 0 && (
                         <View style={styles.dayMeals}>
-                            <Text style={styles.sectionTitle}>{getDayName(mealPlan.days[0].date)}'s Meals</Text>
+                            <Text style={styles.sectionTitle}>
+                                {t("meal_plan.meals_of_day", {
+                                    day: t(`meal_plan.days.${getDayKey(mealPlan.days[0].date)}`)
+                                })}
+                            </Text>
 
                             <View style={styles.daySummary}>
                                 <Text style={styles.daySummaryText}>
-                                    Total: {mealPlan.days[0].totalCalories} kcal • P: {mealPlan.days[0].totalProtein}g • C: {mealPlan.days[0].totalCarbs}g • F: {mealPlan.days[0].totalFat}g
+                                    {t("meal_plan.total_summary", {
+                                        cal: mealPlan.days[0].totalCalories,
+                                        p: mealPlan.days[0].totalProtein,
+                                        c: mealPlan.days[0].totalCarbs,
+                                        f: mealPlan.days[0].totalFat
+                                    })}
                                 </Text>
                             </View>
 
-                            {renderMealCard(mealPlan.days[0].breakfast, 'Breakfast', 'sunny')}
-                            {renderMealCard(mealPlan.days[0].lunch, 'Lunch', 'restaurant')}
-                            {renderMealCard(mealPlan.days[0].dinner, 'Dinner', 'moon')}
+                            {renderMealCard(mealPlan.days[0].breakfast, t('common.breakfast'), 'sunny')}
+                            {renderMealCard(mealPlan.days[0].lunch, t('common.lunch'), 'restaurant')}
+                            {renderMealCard(mealPlan.days[0].dinner, t('common.dinner'), 'moon')}
                             {mealPlan.days[0].snacks.map((snack, i) => (
                                 <React.Fragment key={`snack-0-${i}`}>
-                                    {renderMealCard(snack, `Snack ${i + 1}`, 'cafe')}
+                                    {renderMealCard(snack, `${t('common.snack')} ${i + 1}`, 'cafe')}
                                 </React.Fragment>
                             ))}
                         </View>
@@ -275,7 +314,7 @@ export default function MealPlanScreen() {
                     {/* Regenerate Button */}
                     <Pressable style={styles.regenerateButton} onPress={regeneratePlan}>
                         <Ionicons name="refresh" size={20} color="white" />
-                        <Text style={styles.regenerateButtonText}>Generate New Plan</Text>
+                        <Text style={styles.regenerateButtonText}>{t('meal_plan.generate_new')}</Text>
                     </Pressable>
                 </ScrollView>
             ) : null}
@@ -288,7 +327,7 @@ export default function MealPlanScreen() {
             >
                 <View style={styles.modalContainer}>
                     <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>Shopping List</Text>
+                        <Text style={styles.modalTitle}>{t('meal_plan.shopping_list')}</Text>
                         <Pressable
                             style={styles.closeButton}
                             onPress={() => setShowShoppingList(false)}

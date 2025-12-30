@@ -1,4 +1,5 @@
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { getAuthErrorMessage } from "@/utils/authErrors";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -19,6 +20,7 @@ import CustomAlertModal, { AlertType } from "../../components/CustomAlertModal";
 export default function SignUpScreen() {
     const router = useRouter();
     const { signUp } = useAuth();
+    const { t, language, setLanguage } = useLanguage();
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -52,7 +54,7 @@ export default function SignUpScreen() {
 
     const handleSignUp = async () => {
         if (!email || !password) {
-            showCustomAlert("error", "Error", "Please enter both email and password");
+            showCustomAlert("error", t('auth.error_generic'), t('auth.error_empty'));
             return;
         }
 
@@ -61,7 +63,7 @@ export default function SignUpScreen() {
             await signUp(email.trim(), password);
             // AuthContext will update, redirection happens automatically
         } catch (e: any) {
-            showCustomAlert("error", "Sign Up Failed", getAuthErrorMessage(e));
+            showCustomAlert("error", t('auth.error_signup'), getAuthErrorMessage(e));
         } finally {
             setIsLoading(false);
         }
@@ -77,6 +79,15 @@ export default function SignUpScreen() {
                 style={StyleSheet.absoluteFill}
             />
 
+            <TouchableOpacity
+                style={styles.langButton}
+                onPress={() => setLanguage(language === 'tr' ? 'en' : 'tr')}
+            >
+                <Text style={styles.langButtonText}>
+                    {language === 'tr' ? 'TR 🇹🇷' : 'EN 🇬🇧'}
+                </Text>
+            </TouchableOpacity>
+
             <View style={styles.content}>
                 <View style={styles.header}>
                     <Image
@@ -84,13 +95,13 @@ export default function SignUpScreen() {
                         style={styles.logo}
                         contentFit="contain"
                     />
-                    <Text style={styles.title}>Create Account</Text>
-                    <Text style={styles.subtitle}>Start your healthy journey today</Text>
+                    <Text style={styles.title}>{t('auth.create_account')}</Text>
+                    <Text style={styles.subtitle}>{t('auth.sign_up_subtitle')}</Text>
                 </View>
 
                 <View style={styles.form}>
                     <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Email</Text>
+                        <Text style={styles.label}>{t('auth.email')}</Text>
                         <TextInput
                             style={styles.input}
                             placeholder="hello@example.com"
@@ -102,7 +113,7 @@ export default function SignUpScreen() {
                     </View>
 
                     <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Password</Text>
+                        <Text style={styles.label}>{t('auth.password')}</Text>
                         <TextInput
                             style={styles.input}
                             placeholder="••••••••"
@@ -120,15 +131,15 @@ export default function SignUpScreen() {
                         {isLoading ? (
                             <ActivityIndicator color="white" />
                         ) : (
-                            <Text style={styles.buttonText}>Sign Up</Text>
+                            <Text style={styles.buttonText}>{t('auth.sign_up')}</Text>
                         )}
                     </TouchableOpacity>
 
                     <View style={styles.footer}>
-                        <Text style={styles.footerText}>Already have an account? </Text>
+                        <Text style={styles.footerText}>{t('auth.have_account')} </Text>
                         <Link href="/auth/login" asChild>
                             <TouchableOpacity>
-                                <Text style={styles.link}>Sign In</Text>
+                                <Text style={styles.link}>{t('auth.sign_in')}</Text>
                             </TouchableOpacity>
                         </Link>
                     </View>
@@ -224,5 +235,22 @@ const styles = StyleSheet.create({
         color: "#2563eb",
         fontSize: 14,
         fontWeight: "700",
+    },
+    langButton: {
+        position: 'absolute',
+        top: 60,
+        right: 24,
+        zIndex: 10,
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+    },
+    langButtonText: {
+        fontSize: 14,
+        fontWeight: "700",
+        color: "#1e293b",
     },
 });

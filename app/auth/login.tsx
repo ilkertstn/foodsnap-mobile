@@ -1,5 +1,6 @@
 import CustomAlertModal, { AlertType } from "@/components/CustomAlertModal";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { getAuthErrorMessage } from "@/utils/authErrors";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -19,6 +20,7 @@ import {
 export default function LoginScreen() {
     const router = useRouter();
     const { signIn, signInGuest, user } = useAuth();
+    const { t, language, setLanguage } = useLanguage();
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -52,7 +54,7 @@ export default function LoginScreen() {
 
     const handleLogin = async () => {
         if (!email || !password) {
-            showCustomAlert("error", "Error", "Please enter both email and password");
+            showCustomAlert("error", t('auth.error_generic'), t('auth.error_empty'));
             return;
         }
 
@@ -62,7 +64,7 @@ export default function LoginScreen() {
             // Explicitly redirect to tabs on success
             router.replace("/(tabs)/progress");
         } catch (e: any) {
-            showCustomAlert("error", "Login Failed", getAuthErrorMessage(e));
+            showCustomAlert("error", t('auth.error_login'), getAuthErrorMessage(e));
         } finally {
             setIsLoading(false);
         }
@@ -79,7 +81,7 @@ export default function LoginScreen() {
             await signInGuest();
             router.replace("/(tabs)/progress");
         } catch (e: any) {
-            showCustomAlert("error", "Error", getAuthErrorMessage(e));
+            showCustomAlert("error", t('auth.error_generic'), getAuthErrorMessage(e));
         } finally {
             setIsLoading(false);
         }
@@ -95,6 +97,15 @@ export default function LoginScreen() {
                 style={StyleSheet.absoluteFill}
             />
 
+            <TouchableOpacity
+                style={styles.langButton}
+                onPress={() => setLanguage(language === 'tr' ? 'en' : 'tr')}
+            >
+                <Text style={styles.langButtonText}>
+                    {language === 'tr' ? 'TR 🇹🇷' : 'EN 🇬🇧'}
+                </Text>
+            </TouchableOpacity>
+
             <View style={styles.content}>
                 <View style={styles.header}>
                     <Image
@@ -102,13 +113,13 @@ export default function LoginScreen() {
                         style={styles.logo}
                         contentFit="contain"
                     />
-                    <Text style={styles.title}>Welcome Back</Text>
-                    <Text style={styles.subtitle}>Sign in to continue your journey</Text>
+                    <Text style={styles.title}>{t('auth.welcome_back')}</Text>
+                    <Text style={styles.subtitle}>{t('auth.sign_in_subtitle')}</Text>
                 </View>
 
                 <View style={styles.form}>
                     <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Email</Text>
+                        <Text style={styles.label}>{t('auth.email')}</Text>
                         <TextInput
                             style={styles.input}
                             placeholder="hello@example.com"
@@ -120,7 +131,7 @@ export default function LoginScreen() {
                     </View>
 
                     <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Password</Text>
+                        <Text style={styles.label}>{t('auth.password')}</Text>
                         <TextInput
                             style={styles.input}
                             placeholder="••••••••"
@@ -138,22 +149,22 @@ export default function LoginScreen() {
                         {isLoading ? (
                             <ActivityIndicator color="white" />
                         ) : (
-                            <Text style={styles.buttonText}>Sign In</Text>
+                            <Text style={styles.buttonText}>{t('auth.sign_in')}</Text>
                         )}
                     </TouchableOpacity>
 
                     <View style={styles.footer}>
-                        <Text style={styles.footerText}>Don't have an account? </Text>
+                        <Text style={styles.footerText}>{t('auth.no_account')} </Text>
                         <Link href="/auth/signup" asChild>
                             <TouchableOpacity>
-                                <Text style={styles.link}>Sign Up</Text>
+                                <Text style={styles.link}>{t('auth.sign_up')}</Text>
                             </TouchableOpacity>
                         </Link>
                     </View>
 
                     <View style={styles.divider}>
                         <View style={styles.line} />
-                        <Text style={styles.orText}>OR</Text>
+                        <Text style={styles.orText}>{t('auth.or')}</Text>
                         <View style={styles.line} />
                     </View>
 
@@ -162,7 +173,7 @@ export default function LoginScreen() {
                         onPress={handleGuest}
                         disabled={isLoading}
                     >
-                        <Text style={[styles.buttonText, styles.ghostButtonText]}>Continue as Guest</Text>
+                        <Text style={[styles.buttonText, styles.ghostButtonText]}>{t('auth.guest_continue')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -285,6 +296,23 @@ const styles = StyleSheet.create({
         color: "#94a3b8",
         fontWeight: "600",
         fontSize: 14,
+    },
+    langButton: {
+        position: 'absolute',
+        top: 60,
+        right: 24,
+        zIndex: 10,
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+    },
+    langButtonText: {
+        fontSize: 14,
+        fontWeight: "700",
+        color: "#1e293b",
     },
 });
 

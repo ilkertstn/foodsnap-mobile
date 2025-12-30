@@ -10,11 +10,13 @@ import {
     FlatList,
     Modal,
     Pressable,
+    ScrollView,
     StyleSheet,
     Text,
     TextInput,
     View
 } from "react-native";
+import { useLanguage } from "../context/LanguageContext";
 import { FoodResult, MealType } from "../types";
 
 interface FoodSearchModalProps {
@@ -45,6 +47,7 @@ export default function FoodSearchModal({
     onSelect,
     defaultCategory = "lunch"
 }: FoodSearchModalProps) {
+    const { t } = useLanguage();
     const [query, setQuery] = useState("");
     const [results, setResults] = useState<SearchResult[]>([]);
     const [loading, setLoading] = useState(false);
@@ -68,7 +71,7 @@ export default function FoodSearchModal({
             );
 
             if (!response.ok) {
-                throw new Error("Search failed");
+                throw new Error(t("food_search.search_failed"));
             }
 
             const data = await response.json();
@@ -77,7 +80,7 @@ export default function FoodSearchModal({
             );
             setResults(products);
         } catch (e: any) {
-            setError(e.message || "Search failed");
+            setError(e.message || t("food_search.search_failed"));
             setResults([]);
         } finally {
             setLoading(false);
@@ -152,7 +155,7 @@ export default function FoodSearchModal({
                 <Text style={styles.caloriesValue}>
                     {Math.round(item.nutriments["energy-kcal_100g"] || 0)}
                 </Text>
-                <Text style={styles.caloriesUnit}>kcal/100g</Text>
+                <Text style={styles.caloriesUnit}>{t("food_search.kcal_unit")}</Text>
             </View>
         </Pressable>
     );
@@ -164,7 +167,7 @@ export default function FoodSearchModal({
             <View style={styles.container}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Search Food</Text>
+                    <Text style={styles.headerTitle}>{t("food_search.title")}</Text>
                     <Pressable onPress={handleClose} style={styles.closeButton}>
                         <Ionicons name="close" size={24} color="#64748b" />
                     </Pressable>
@@ -175,7 +178,7 @@ export default function FoodSearchModal({
                     <Ionicons name="search" size={20} color="#94a3b8" style={styles.searchIcon} />
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Search foods..."
+                        placeholder={t("food_search.placeholder")}
                         placeholderTextColor="#94a3b8"
                         value={query}
                         onChangeText={handleSearchChange}
@@ -189,24 +192,30 @@ export default function FoodSearchModal({
                 </View>
 
                 {/* Category Selector */}
-                <View style={styles.categoryContainer}>
-                    {MEAL_TYPES.map((type) => (
-                        <Pressable
-                            key={type}
-                            style={[
-                                styles.categoryButton,
-                                selectedCategory === type && styles.categoryButtonActive
-                            ]}
-                            onPress={() => setSelectedCategory(type)}
-                        >
-                            <Text style={[
-                                styles.categoryText,
-                                selectedCategory === type && styles.categoryTextActive
-                            ]}>
-                                {type.charAt(0).toUpperCase() + type.slice(1)}
-                            </Text>
-                        </Pressable>
-                    ))}
+                <View>
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.categoryContainer}
+                    >
+                        {MEAL_TYPES.map((type) => (
+                            <Pressable
+                                key={type}
+                                style={[
+                                    styles.categoryButton,
+                                    selectedCategory === type && styles.categoryButtonActive
+                                ]}
+                                onPress={() => setSelectedCategory(type)}
+                            >
+                                <Text style={[
+                                    styles.categoryText,
+                                    selectedCategory === type && styles.categoryTextActive
+                                ]}>
+                                    {t(`common.${type}`)}
+                                </Text>
+                            </Pressable>
+                        ))}
+                    </ScrollView>
                 </View>
 
                 {/* Content */}
@@ -246,7 +255,7 @@ export default function FoodSearchModal({
                             </View>
 
                             <View style={styles.gramsContainer}>
-                                <Text style={styles.gramsLabel}>Amount (g)</Text>
+                                <Text style={styles.gramsLabel}>{t("food_search.amount_g")}</Text>
                                 <TextInput
                                     style={styles.gramsInput}
                                     value={grams}
@@ -262,13 +271,13 @@ export default function FoodSearchModal({
                                 style={styles.backButton}
                                 onPress={() => setSelectedFood(null)}
                             >
-                                <Text style={styles.backButtonText}>Back</Text>
+                                <Text style={styles.backButtonText}>{t("common.back")}</Text>
                             </Pressable>
                             <Pressable
                                 style={styles.addButton}
                                 onPress={handleAddFood}
                             >
-                                <Text style={styles.addButtonText}>Add to Log</Text>
+                                <Text style={styles.addButtonText}>{t("food_search.add_to_log")}</Text>
                             </Pressable>
                         </View>
                     </View>
@@ -290,16 +299,16 @@ export default function FoodSearchModal({
                         {!loading && !error && results.length === 0 && query.length >= 2 && (
                             <View style={styles.emptyContainer}>
                                 <Ionicons name="search" size={48} color="#94a3b8" />
-                                <Text style={styles.emptyText}>No results found</Text>
+                                <Text style={styles.emptyText}>{t("food_search.no_results")}</Text>
                             </View>
                         )}
 
                         {!loading && !error && results.length === 0 && query.length < 2 && (
                             <View style={styles.emptyContainer}>
                                 <Ionicons name="restaurant" size={48} color="#94a3b8" />
-                                <Text style={styles.emptyText}>Search for food items</Text>
+                                <Text style={styles.emptyText}>{t("food_search.search_prompt_title")}</Text>
                                 <Text style={styles.emptySubtext}>
-                                    Type at least 2 characters to search
+                                    {t("food_search.search_prompt_subtitle")}
                                 </Text>
                             </View>
                         )}

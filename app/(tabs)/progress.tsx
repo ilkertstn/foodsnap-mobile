@@ -4,7 +4,9 @@ import React, { useMemo } from "react";
 import { Dimensions, ScrollView, StyleSheet, Text, View } from "react-native";
 import { BarChart, LineChart } from "react-native-chart-kit";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useLanguage } from "../../context/LanguageContext";
 import { useMeals } from "../../context/MealContext";
+
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -24,6 +26,7 @@ const chartConfig = {
 };
 
 export default function ProgressScreen() {
+    const { t } = useLanguage();
     const insets = useSafeAreaInsets();
     const { weightHistory, logs, goals } = useMeals();
 
@@ -115,7 +118,7 @@ export default function ProgressScreen() {
             />
 
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>Progress</Text>
+                <Text style={styles.headerTitle}>{t('progress.title')}</Text>
             </View>
 
             <ScrollView contentContainerStyle={styles.content}>
@@ -124,7 +127,7 @@ export default function ProgressScreen() {
                     <View style={styles.cardHeader}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                             <Ionicons name="body" size={20} color="#3b82f6" />
-                            <Text style={styles.cardTitle}>Weight Trend</Text>
+                            <Text style={styles.cardTitle}>{t('progress.weight')}</Text>
                         </View>
                         {weightData && (
                             <Text style={styles.subtitle}>Last 7 Days</Text>
@@ -144,8 +147,8 @@ export default function ProgressScreen() {
                         />
                     ) : (
                         <View style={styles.emptyState}>
-                            <Text style={styles.emptyText}>No weight data yet.</Text>
-                            <Text style={styles.emptySubtext}>Update your weight in Profile to track progress.</Text>
+                            <Text style={styles.emptyText}>{t('progress.no_weight_data')}</Text>
+                            <Text style={styles.emptySubtext}>{t('progress.update_weight')}</Text>
                         </View>
                     )}
                 </View>
@@ -155,10 +158,10 @@ export default function ProgressScreen() {
                     <View style={styles.cardHeader}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                             <Ionicons name="flame" size={20} color="#f97316" />
-                            <Text style={styles.cardTitle}>Calorie Intake</Text>
+                            <Text style={styles.cardTitle}>{t('progress.calorie_intake')}</Text>
                         </View>
                         <View style={styles.avgBadge}>
-                            <Text style={styles.avgLabel}>Weekly Avg:</Text>
+                            <Text style={styles.avgLabel}>{t('progress.weekly_avg')}:</Text>
                             <Text style={styles.avgValue}>{weeklyAverage} kcal</Text>
                         </View>
                     </View>
@@ -180,8 +183,8 @@ export default function ProgressScreen() {
                     />
                     <View style={styles.goalLine}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                            <Text style={styles.goalText}>Daily Goal: {goals.calories} kcal</Text>
-                            <Text style={styles.goalText}>Vs Avg: {weeklyAverage - goals.calories > 0 ? '+' : ''}{weeklyAverage - goals.calories}</Text>
+                            <Text style={styles.goalText}>{t('progress.daily_goal')} {goals.calories} {t('progress.kcal')}</Text>
+                            <Text style={styles.goalText}> {t('progress.vs_avg')} {weeklyAverage - goals.calories > 0 ? '+' : ''}{weeklyAverage - goals.calories} {t('progress.kcal')}</Text>
                         </View>
                     </View>
                 </View>

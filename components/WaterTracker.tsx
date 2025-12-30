@@ -2,11 +2,14 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React from "react";
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useLanguage } from "../context/LanguageContext";
 import { useMeals } from "../context/MealContext";
 import { getAdjustedDate } from "../utils/date";
 
 export default function WaterTracker() {
     const { getDailySummary, addWater, logs, goals } = useMeals();
+    const { t } = useLanguage();
+
     const today = getAdjustedDate();
     const summary = getDailySummary(today);
 
@@ -57,7 +60,7 @@ export default function WaterTracker() {
                 <View style={styles.headerTop}>
                     <View style={styles.titleRow}>
                         <Ionicons name="water" size={20} color="#3b82f6" />
-                        <Text style={styles.title}>Water Intake</Text>
+                        <Text style={styles.title}>{t('dashboard.water_intake')}</Text>
                     </View>
                     {streak > 0 && (
                         <View style={styles.streakBadge}>

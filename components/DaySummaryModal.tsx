@@ -3,6 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { ZoomIn } from "react-native-reanimated";
+import { useLanguage } from "../context/LanguageContext";
 
 interface DaySummaryModalProps {
     visible: boolean;
@@ -23,6 +24,7 @@ interface DaySummaryModalProps {
 }
 
 export default function DaySummaryModal({ visible, onClose, date, consumed, goals }: DaySummaryModalProps) {
+    const { t, language } = useLanguage();
     if (!visible) return null;
 
     const caloriePercent = Math.round((consumed.calories / goals.calories) * 100);
@@ -36,22 +38,22 @@ export default function DaySummaryModal({ visible, onClose, date, consumed, goal
     const getMessage = () => {
         if (caloriePercent < 70) {
             return {
-                title: "Day Complete",
-                message: "Remember to fuel your body properly tomorrow 🥗",
+                title: t("day_summary.title_complete"),
+                message: t("day_summary.msg_under"),
                 emoji: "💪",
                 color: "#f59e0b"
             };
         } else if (caloriePercent > 130) {
             return {
-                title: "Day Complete",
-                message: "Tomorrow is a new opportunity 💪",
+                title: t("day_summary.title_complete"),
+                message: t("day_summary.msg_over"),
                 emoji: "🌅",
                 color: "#3b82f6"
             };
         } else {
             return {
-                title: "Great Job!",
-                message: "You stayed on track today! 🎉",
+                title: t("day_summary.title_great"),
+                message: t("day_summary.msg_success"),
                 emoji: "✨",
                 color: "#22c55e"
             };
@@ -59,7 +61,7 @@ export default function DaySummaryModal({ visible, onClose, date, consumed, goal
     };
 
     const feedback = getMessage();
-    const formattedDate = new Date(date).toLocaleDateString("en-US", {
+    const formattedDate = new Date(date).toLocaleDateString(language === 'tr' ? 'tr-TR' : 'en-US', {
         month: "short",
         day: "numeric",
         year: "numeric"
@@ -104,10 +106,10 @@ export default function DaySummaryModal({ visible, onClose, date, consumed, goal
                         <View style={styles.divider} />
 
                         <View style={styles.statsSection}>
-                            <Text style={styles.sectionTitle}>Daily Summary</Text>
+                            <Text style={styles.sectionTitle}>{t("day_summary.summary_title")}</Text>
 
                             <StatRow
-                                label="Calories"
+                                label={t("dashboard.calories")}
                                 consumed={consumed.calories}
                                 goal={goals.calories}
                                 percent={caloriePercent}
@@ -116,7 +118,7 @@ export default function DaySummaryModal({ visible, onClose, date, consumed, goal
                             />
 
                             <StatRow
-                                label="Protein"
+                                label={t("dashboard.protein")}
                                 consumed={consumed.protein}
                                 goal={goals.protein}
                                 percent={proteinPercent}
@@ -125,7 +127,7 @@ export default function DaySummaryModal({ visible, onClose, date, consumed, goal
                             />
 
                             <StatRow
-                                label="Carbs"
+                                label={t("dashboard.carbs")}
                                 consumed={consumed.carbs}
                                 goal={goals.carbs}
                                 percent={carbsPercent}
@@ -134,7 +136,7 @@ export default function DaySummaryModal({ visible, onClose, date, consumed, goal
                             />
 
                             <StatRow
-                                label="Fat"
+                                label={t("dashboard.fat")}
                                 consumed={consumed.fat}
                                 goal={goals.fat}
                                 percent={fatPercent}
@@ -144,7 +146,7 @@ export default function DaySummaryModal({ visible, onClose, date, consumed, goal
                         </View>
 
                         <Pressable onPress={onClose} style={[styles.button, { backgroundColor: feedback.color }]}>
-                            <Text style={styles.buttonText}>Awesome</Text>
+                            <Text style={styles.buttonText}>{t("day_summary.button_awesome")}</Text>
                             <Ionicons name="checkmark-circle" size={20} color="white" />
                         </Pressable>
                     </ScrollView>

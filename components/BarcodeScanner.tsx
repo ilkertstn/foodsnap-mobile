@@ -1,3 +1,4 @@
+import { useLanguage } from "@/context/LanguageContext";
 import { Ionicons } from "@expo/vector-icons";
 import { BarcodeScanningResult, CameraView, useCameraPermissions } from "expo-camera";
 import React, { useState } from "react";
@@ -13,6 +14,8 @@ export default function BarcodeScanner({ onResult, onCancel }: Props) {
     const [permission, requestPermission] = useCameraPermissions();
     const [scanned, setScanned] = useState(false);
     const [loading, setLoading] = useState(false);
+    const { t } = useLanguage();
+
 
     if (!permission) {
         return <View />;
@@ -62,7 +65,7 @@ export default function BarcodeScanner({ onResult, onCancel }: Props) {
 
             onResult(mappedResult);
         } catch (e) {
-            setScanned(false); // tekrar denesin
+            setScanned(false);
             setLoading(false);
         }
     };
@@ -78,13 +81,13 @@ export default function BarcodeScanner({ onResult, onCancel }: Props) {
             >
                 <View style={styles.overlay}>
                     <View style={styles.scanArea} />
-                    <Text style={styles.instructionText}>Scan a barcode</Text>
+                    <Text style={styles.instructionText}>{t("scan.scan_barcode")}</Text>
                 </View>
 
                 {loading && (
                     <View style={styles.loadingOverlay}>
                         <ActivityIndicator size="large" color="#3b82f6" />
-                        <Text style={styles.loadingText}>Fetching info...</Text>
+                        <Text style={styles.loadingText}>{t("scan.loading_info")}</Text>
                     </View>
                 )}
 

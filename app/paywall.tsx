@@ -3,10 +3,12 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useAuth } from "../context/AuthContext";
+import { useLanguage } from "../context/LanguageContext";
 
 export default function Paywall() {
     const router = useRouter();
     const { user, isTrialExpired, signInGuest } = useAuth();
+    const { t, language, setLanguage } = useLanguage();
 
     // Check if this is an expired guest user
     const isExpiredGuest = user?.isAnonymous && isTrialExpired;
@@ -26,6 +28,15 @@ export default function Paywall() {
                 style={StyleSheet.absoluteFill}
             />
 
+            <TouchableOpacity
+                style={styles.langButton}
+                onPress={() => setLanguage(language === 'tr' ? 'en' : 'tr')}
+            >
+                <Text style={styles.langButtonText}>
+                    {language === 'tr' ? 'TR 🇹🇷' : 'EN 🇬🇧'}
+                </Text>
+            </TouchableOpacity>
+
             <View style={styles.content}>
                 <Image
                     source={require("../assets/images/foodsnap-logo.png")}
@@ -34,54 +45,54 @@ export default function Paywall() {
                 />
 
                 <Text style={styles.title}>
-                    {isExpiredGuest ? "Trial Expired" : "Welcome to FoodSnap"}
+                    {isExpiredGuest ? t('paywall.trial_expired') : t('paywall.welcome')}
                 </Text>
 
                 <View style={styles.infoContainer}>
                     {isExpiredGuest ? (
                         <>
                             <Text style={styles.description}>
-                                Your 3-day guest trial has ended. Sign up to continue tracking!
+                                {t('paywall.guest_desc')}
                             </Text>
 
                             <View style={styles.featureItem}>
                                 <Text style={styles.featureIcon}>✨</Text>
                                 <Text style={styles.featureText}>
-                                    <Text style={styles.highlight}>Unlimited</Text> meal scans
+                                    <Text style={styles.highlight}>{t('paywall.feature_unlimited')}</Text>
                                 </Text>
                             </View>
 
                             <View style={styles.featureItem}>
                                 <Text style={styles.featureIcon}>💾</Text>
-                                <Text style={styles.featureText}>Keep all your existing data</Text>
+                                <Text style={styles.featureText}>{t('paywall.feature_keep_data')}</Text>
                             </View>
 
                             <View style={styles.featureItem}>
                                 <Text style={styles.featureIcon}>📱</Text>
-                                <Text style={styles.featureText}>Access on any device</Text>
+                                <Text style={styles.featureText}>{t('paywall.feature_access')}</Text>
                             </View>
                         </>
                     ) : (
                         <>
                             <Text style={styles.description}>
-                                Start your nutrition journey today.
+                                {t('paywall.start_desc')}
                             </Text>
 
                             <View style={styles.featureItem}>
                                 <Text style={styles.featureIcon}>🗓️</Text>
                                 <Text style={styles.featureText}>
-                                    Use freely for <Text style={styles.highlight}>3 Days</Text> with <Text style={styles.highlight}>10 Scans</Text> limit.
+                                    {t('paywall.feature_scan_limit')}
                                 </Text>
                             </View>
 
                             <View style={styles.featureItem}>
                                 <Text style={styles.featureIcon}>📊</Text>
-                                <Text style={styles.featureText}>Track calories, macros, and water.</Text>
+                                <Text style={styles.featureText}>{t('paywall.feature_track')}</Text>
                             </View>
 
                             <View style={styles.featureItem}>
                                 <Text style={styles.featureIcon}>🔒</Text>
-                                <Text style={styles.featureText}>Sign up later to save your progress permanently.</Text>
+                                <Text style={styles.featureText}>{t('paywall.feature_signup_later')}</Text>
                             </View>
                         </>
                     )}
@@ -94,14 +105,14 @@ export default function Paywall() {
                                 onPress={() => router.push("/auth/signup")}
                                 style={styles.primaryButton}
                             >
-                                <Text style={styles.primaryButtonText}>Sign Up Now</Text>
+                                <Text style={styles.primaryButtonText}>{t('paywall.btn_signup')}</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
                                 onPress={() => router.push("/auth/login")}
                                 style={styles.secondaryButton}
                             >
-                                <Text style={styles.secondaryButtonText}>I already have an account</Text>
+                                <Text style={styles.secondaryButtonText}>{t('paywall.btn_login')}</Text>
                             </TouchableOpacity>
                         </>
                     ) : (
@@ -110,14 +121,14 @@ export default function Paywall() {
                                 onPress={handleStartGuest}
                                 style={styles.primaryButton}
                             >
-                                <Text style={styles.primaryButtonText}>Start 3-Day Guest Pass</Text>
+                                <Text style={styles.primaryButtonText}>{t('paywall.btn_guest')}</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
                                 onPress={() => router.push("/auth/login")}
                                 style={styles.secondaryButton}
                             >
-                                <Text style={styles.secondaryButtonText}>I already have an account</Text>
+                                <Text style={styles.secondaryButtonText}>{t('paywall.btn_login')}</Text>
                             </TouchableOpacity>
                         </>
                     )}
@@ -214,5 +225,22 @@ const styles = StyleSheet.create({
         color: "#2563eb",
         fontSize: 16,
         fontWeight: "600",
+    },
+    langButton: {
+        position: 'absolute',
+        top: 60,
+        right: 24,
+        zIndex: 10,
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+    },
+    langButtonText: {
+        fontSize: 14,
+        fontWeight: "700",
+        color: "#1e293b",
     },
 });

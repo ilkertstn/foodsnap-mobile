@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useLanguage } from "../context/LanguageContext";
 import { useMeals } from "../context/MealContext";
 
 type AddExerciseModalProps = {
@@ -11,34 +12,35 @@ type AddExerciseModalProps = {
 
 
 
-const EXERCISES = [
-    { name: "Walking (Brisk)", met: 3.8 },
-    { name: "Running (Jog)", met: 7.0 },
-    { name: "Running (Fast)", met: 11.0 },
-    { name: "Cycling (Leisure)", met: 4.0 },
-    { name: "Cycling (Vigorous)", met: 8.0 },
-    { name: "Swimming", met: 6.0 },
-    { name: "Weight Lifting", met: 3.5 },
-    { name: "Yoga", met: 2.5 },
-    { name: "HIIT", met: 8.0 },
+const EXERCISE_DATA = [
+    { id: "walking_brisk", met: 3.8 },
+    { id: "running_jog", met: 7.0 },
+    { id: "running_fast", met: 11.0 },
+    { id: "cycling_leisure", met: 4.0 },
+    { id: "cycling_vigorous", met: 8.0 },
+    { id: "swimming", met: 6.0 },
+    { id: "weight_lifting", met: 3.5 },
+    { id: "yoga", met: 2.5 },
+    { id: "hiit", met: 8.0 },
 ];
 
 export default function AddExerciseModal({ visible, onClose, onAdd }: AddExerciseModalProps) {
     const { profile } = useMeals();
     const [duration, setDuration] = useState("");
     const [calories, setCalories] = useState("");
+    const { t } = useLanguage();
 
 
     const [manual, setManual] = useState(false);
-    const [name, setName] = useState(EXERCISES[0].name);
-
-
+    const [selectedId, setSelectedId] = useState(EXERCISE_DATA[0].id);
+    const [customName, setCustomName] = useState("");
 
     useEffect(() => {
         if (!manual) {
             const weight = profile.weightKg || 70;
             const hours = (parseInt(duration) || 0) / 60;
-            const met = EXERCISES.find(e => e.name === name)?.met || 4;
+            const exercise = EXERCISE_DATA.find(e => e.id === selectedId);
+            const met = exercise?.met || 4;
 
             if (hours > 0) {
                 const burned = Math.round(met * weight * hours);
@@ -47,20 +49,21 @@ export default function AddExerciseModal({ visible, onClose, onAdd }: AddExercis
                 setCalories("");
             }
         }
-    }, [duration, name, manual, profile.weightKg]);
-
-
-
+    }, [duration, selectedId, manual, profile.weightKg]);
 
     const handleAdd = () => {
         if (!duration || !calories) return;
+
+        const exerciseName = manual ? (customName || "Exercise") : t(`exercises.${selectedId}`);
+
         onAdd({
-            type: manual ? (name || "Exercise") : name,
+            type: exerciseName,
             durationMinutes: Number(duration),
             caloriesBurned: Number(calories),
         });
         setDuration("");
         setCalories("");
+        setCustomName("");
 
         onClose();
     };
@@ -73,7 +76,7 @@ export default function AddExerciseModal({ visible, onClose, onAdd }: AddExercis
                 <Pressable style={styles.backdrop} onPress={onClose} />
                 <View style={styles.modalContent}>
                     <View style={styles.header}>
-                        <Text style={styles.title}>Add Exercise</Text>
+                        <Text style={styles.title}>{t("add_exercise.title")}</Text>
                         <Pressable onPress={onClose}>
                             <Ionicons name="close-circle" size={24} color="#94a3b8" />
                         </Pressable>
@@ -81,17 +84,17 @@ export default function AddExerciseModal({ visible, onClose, onAdd }: AddExercis
 
 
                     <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Exercise Name</Text>
+                        <Text style={styles.label}>{t("add_exercise.exercise_name")}</Text>
                         {!manual ? (
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipContainer}>
-                                {EXERCISES.map((ex) => (
+                                {EXERCISE_DATA.map((ex) => (
                                     <Pressable
-                                        key={ex.name}
-                                        style={[styles.chip, name === ex.name && styles.chipActive]}
-                                        onPress={() => setName(ex.name)}
+                                        key={ex.id}
+                                        style={[styles.chip, selectedId === ex.id && styles.chipActive]}
+                                        onPress={() => setSelectedId(ex.id)}
                                     >
-                                        <Text style={[styles.chipText, name === ex.name && styles.chipTextActive]}>
-                                            {ex.name}
+                                        <Text style={[styles.chipText, selectedId === ex.id && styles.chipTextActive]}>
+                                            {t(`exercises.${ex.id}`)}
                                         </Text>
                                     </Pressable>
                                 ))}
@@ -100,24 +103,24 @@ export default function AddExerciseModal({ visible, onClose, onAdd }: AddExercis
                             <TextInput
                                 style={styles.input}
                                 placeholder="e.g. Running, Yoga"
-                                value={name}
-                                onChangeText={setName}
+                                value={customName}
+                                onChangeText={setCustomName}
                             />
                         )}
                         <Pressable onPress={() => {
                             setManual(!manual);
-                            if (!manual) setName("");
-                            else setName(EXERCISES[0].name);
+                            if (!manual) setCustomName("");
+                            else setSelectedId(EXERCISE_DATA[0].id);
                             setCalories("");
                         }}>
                             <Text style={styles.switchModeText}>
-                                {manual ? "Switch to Auto-Calculate" : "Switch to Manual Input (Custom)"}
+                                {manual ? t("add_exercise.switch_to_auto") : t("add_exercise.switch_to_manual")}
                             </Text>
                         </Pressable>
                     </View>
 
                     <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Duration (minutes)</Text>
+                        <Text style={styles.label}>{t("add_exercise.duration")}</Text>
                         <TextInput
                             style={styles.input}
                             value={duration}
@@ -128,7 +131,7 @@ export default function AddExerciseModal({ visible, onClose, onAdd }: AddExercis
                     </View>
 
                     <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Calories Burned (kcal)</Text>
+                        <Text style={styles.label}>{t("add_exercise.calories_burned")}</Text>
                         <TextInput
                             style={styles.input}
                             value={calories}
@@ -138,12 +141,12 @@ export default function AddExerciseModal({ visible, onClose, onAdd }: AddExercis
                             editable={manual}
                         />
                         {!manual && duration && (
-                            <Text style={styles.helperText}>Calculated based on your weight ({profile.weightKg}kg)</Text>
+                            <Text style={styles.helperText}>{t("add_exercise.calories_helper")}</Text>
                         )}
                     </View>
 
                     <Pressable style={styles.addButton} onPress={handleAdd}>
-                        <Text style={styles.addButtonText}>Add Activity</Text>
+                        <Text style={styles.addButtonText}>{t("add_exercise.add_activity")}</Text>
                     </Pressable>
                 </View>
             </View>

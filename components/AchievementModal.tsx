@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring } from "react-native-reanimated";
+import { useLanguage } from "../context/LanguageContext";
 import { Badge } from "../types";
 
 type AchievementModalProps = {
@@ -10,6 +11,7 @@ type AchievementModalProps = {
 };
 
 export default function AchievementModal({ badge, onClose }: AchievementModalProps) {
+    const { t } = useLanguage();
     const scale = useSharedValue(0);
 
     useEffect(() => {
@@ -37,12 +39,12 @@ export default function AchievementModal({ badge, onClose }: AchievementModalPro
                         <Ionicons name={badge.icon as any} size={64} color="#f59e0b" />
                     </Animated.View>
 
-                    <Text style={styles.title}>Badge Unlocked!</Text>
-                    <Text style={styles.badgeTitle}>{badge.title}</Text>
-                    <Text style={styles.description}>{badge.description}</Text>
+                    <Text style={styles.title}>{t('profile.achievements')}</Text>
+                    <Text style={styles.badgeTitle}>{t(badge.titleKey)}</Text>
+                    <Text style={styles.description}>{t(badge.descKey)}</Text>
 
                     <Pressable style={styles.button} onPress={onClose}>
-                        <Text style={styles.buttonText}>Awesome!</Text>
+                        <Text style={styles.buttonText}>{t('common.close')}</Text>
                     </Pressable>
                 </View>
             </View>

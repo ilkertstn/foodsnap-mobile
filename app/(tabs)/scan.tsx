@@ -31,8 +31,10 @@ const MEAL_TYPES: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
 import BarcodeScanner from "../../components/BarcodeScanner";
 import FoodSearchModal from "../../components/FoodSearchModal";
 import SuccessModal from "../../components/SuccessModal";
+import { useLanguage } from "../../context/LanguageContext";
 
 export default function ScanScreen() {
+    const { t } = useLanguage();
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const { user } = useAuth();
@@ -82,14 +84,14 @@ export default function ScanScreen() {
 
         const perm = await ImagePicker.requestCameraPermissionsAsync();
         if (perm.status !== "granted") {
-            setError("Camera permission not granted.");
+            setError(t("scan_errors.permission_denied"));
             return;
         }
 
         if (user?.isAnonymous && guestScanCount >= 10) {
-            Alert.alert("Limit Reached", "You have used your 10 free guest scans. Please sign up to continue tracking!", [
-                { text: "View Offers", onPress: () => router.push("/paywall") },
-                { text: "Cancel", style: "cancel" }
+            Alert.alert(t("scan_errors.limit_reached_title"), t("scan_errors.limit_reached_msg"), [
+                { text: t("scan_errors.view_offers"), onPress: () => router.push("/paywall") },
+                { text: t("common.cancel"), style: "cancel" }
             ]);
             return;
         }
@@ -103,7 +105,7 @@ export default function ScanScreen() {
 
         const asset = shot.assets[0];
         if (!asset?.base64) {
-            setError("Could not get photo base64 (try again).");
+            setError(t("scan_errors.no_photo"));
             return;
         }
 
@@ -113,7 +115,7 @@ export default function ScanScreen() {
 
     const analyze = async () => {
         if (!imageBase64) {
-            setError("You must take a photo first.");
+            setError(t("scan_errors.take_photo_first"));
             return;
         }
 
@@ -154,7 +156,7 @@ export default function ScanScreen() {
                 incrementGuestScanCount();
             }
         } catch (e: any) {
-            setError(e.message ?? "An error occurred");
+            setError(e.message ?? t("common.error"));
         } finally {
             setLoading(false);
         }
@@ -282,13 +284,13 @@ export default function ScanScreen() {
                 showsVerticalScrollIndicator={false}
             >
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Scan Meal</Text>
+                    <Text style={styles.headerTitle}>{t("scan.scan_meal")}</Text>
                     <Text style={styles.headerSubtitle}>
-                        Snap a photo for instant analysis
+                        {t("scan.snap_photo_desc")}
                     </Text>
                     {user?.isAnonymous && (
                         <Text style={styles.guestLimitText}>
-                            Free Guest Scans: {Math.max(0, 10 - guestScanCount)}/10 Remaining
+                            {t("scan.free_guest_scans")}: {Math.max(0, 10 - guestScanCount)}/10 {t("scan.remaining")}
                         </Text>
                     )}
                 </View>
@@ -304,7 +306,7 @@ export default function ScanScreen() {
                             ]}
                         >
                             <Ionicons name="camera" size={24} color="white" />
-                            <Text style={styles.cameraButtonText}>Take Photo</Text>
+                            <Text style={styles.cameraButtonText}>{t("scan.snap_photo")}</Text>
                         </Pressable>
 
                         <Pressable
@@ -322,7 +324,7 @@ export default function ScanScreen() {
                             ) : (
                                 <>
                                     <Ionicons name="sparkles" size={24} color="white" />
-                                    <Text style={styles.analyzeButtonText}>Analyze</Text>
+                                    <Text style={styles.analyzeButtonText}>{t("scan.analyze")}</Text>
                                 </>
                             )}
                         </Pressable>
@@ -338,7 +340,7 @@ export default function ScanScreen() {
                             ]}
                         >
                             <Ionicons name="barcode-outline" size={24} color="#1e293b" />
-                            <Text style={styles.barcodeButtonText}>Scan Barcode</Text>
+                            <Text style={styles.barcodeButtonText}>{t("scan.scan_barcode")}</Text>
                         </Pressable>
 
                         <Pressable
@@ -350,12 +352,12 @@ export default function ScanScreen() {
                             ]}
                         >
                             <Ionicons name="search" size={24} color="#1e293b" />
-                            <Text style={styles.barcodeButtonText}>Search Food</Text>
+                            <Text style={styles.barcodeButtonText}>{t("scan.search_food")}</Text>
                         </Pressable>
                     </View>
 
                     <View style={styles.inputContainer}>
-                        <Text style={styles.inputLabel}>Weight (optional)</Text>
+                        <Text style={styles.inputLabel}>{t("scan.weight")}</Text>
                         <View style={styles.inputWrapper}>
                             <TextInput
                                 value={gramsText}
@@ -365,7 +367,7 @@ export default function ScanScreen() {
                                 placeholderTextColor="#94a3b8"
                                 style={styles.input}
                             />
-                            <Text style={styles.inputUnit}>grams</Text>
+                            <Text style={styles.inputUnit}>{t("scan.grams")}</Text>
                         </View>
                     </View>
                 </View>
@@ -373,7 +375,7 @@ export default function ScanScreen() {
 
                 {!imageUri && !result && recentScans.length > 0 && (
                     <View style={{ marginBottom: 24 }}>
-                        <Text style={styles.sectionTitle}>Recent Scans</Text>
+                        <Text style={styles.sectionTitle}>{t("scan.recent_scans")}</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 20 }}>
                             {recentScans.map((scan, index) => (
                                 <Pressable
@@ -415,7 +417,7 @@ export default function ScanScreen() {
                         />
                         <View style={styles.imageOverlay}>
                             <Ionicons name="image-outline" size={20} color="white" />
-                            <Text style={styles.imageOverlayText}>Ready to analyze</Text>
+                            <Text style={styles.imageOverlayText}>{t("scan.ready_to_analyze")}</Text>
                         </View>
                     </Animated.View>
                 )}
@@ -430,7 +432,7 @@ export default function ScanScreen() {
                 {displayedResult && (
                     <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.resultCard}>
                         <View style={styles.resultHeader}>
-                            <View>
+                            <View style={{ flex: 1, paddingRight: 12 }}>
                                 <Text style={styles.mealName}>{displayedResult.meal_name}</Text>
 
                                 <View style={styles.categorySelector}>
@@ -447,14 +449,14 @@ export default function ScanScreen() {
                                                 styles.categoryChipText,
                                                 selectedCategory === type && styles.categoryChipTextActive
                                             ]}>
-                                                {type}
+                                                {t(`common.${type}`)}
                                             </Text>
                                         </Pressable>
                                     ))}
                                 </View>
                                 {result?.quantity_basis === "100g" && (
                                     <Text style={styles.servingHint}>
-                                        {grams ? `Calculated for ${grams}g` : "Values per 100g"}
+                                        {grams ? t("scan.calculated_for", { grams: grams.toString() }) : t("scan.values_per_100g")}
                                     </Text>
                                 )}
                             </View>
@@ -470,17 +472,17 @@ export default function ScanScreen() {
 
                         <View style={styles.macrosRow}>
                             <MacroItem
-                                label="Protein"
+                                label={t("dashboard.protein")}
                                 value={displayedResult.macros_g.protein}
                                 color="#3b82f6"
                             />
                             <MacroItem
-                                label="Carbs"
+                                label={t("dashboard.carbs")}
                                 value={displayedResult.macros_g.carbs}
                                 color="#10b981"
                             />
                             <MacroItem
-                                label="Fat"
+                                label={t("dashboard.fat")}
                                 value={displayedResult.macros_g.fat}
                                 color="#f59e0b"
                             />
@@ -494,18 +496,20 @@ export default function ScanScreen() {
                             ]}
                         >
                             <Ionicons name="add-circle" size={24} color="white" />
-                            <Text style={styles.saveButtonText}>Add to {selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}</Text>
+                            <Text style={styles.saveButtonText} numberOfLines={1} adjustsFontSizeToFit>
+                                {t("scan.add_to_log")} {t(`common.${selectedCategory}`)}
+                            </Text>
                         </Pressable>
 
                         <View style={styles.divider} />
 
                         <View style={styles.detailsSection}>
-                            <Text style={styles.sectionTitle}>Ingredients</Text>
+                            <Text style={styles.sectionTitle}>{t("scan.ingredients")}</Text>
                             <Text style={styles.bodyText}>
                                 {displayedResult.ingredients.join(", ")}
                             </Text>
 
-                            <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Notes</Text>
+                            <Text style={[styles.sectionTitle, { marginTop: 16 }]}>{t("scan.notes")}</Text>
                             <Text style={styles.bodyText}>{displayedResult.notes}</Text>
                         </View>
                     </Animated.View>
@@ -517,7 +521,7 @@ export default function ScanScreen() {
                     <BlurView intensity={20} style={StyleSheet.absoluteFill} />
                     <View style={styles.loadingCard}>
                         <ActivityIndicator size="large" color="#3b82f6" />
-                        <Text style={styles.loadingText}>Analyzing your food...</Text>
+                        <Text style={styles.loadingText}>{t("scan.analyzing")}</Text>
                     </View>
                 </View>
             )}
@@ -531,9 +535,9 @@ export default function ScanScreen() {
 
             <SuccessModal
                 visible={showSuccessModal}
-                title="Meal Logged!"
-                message={`${result?.meal_name || 'Food'} has been added to your ${selectedCategory}.`}
-                buttonText="Go to Dashboard"
+                title={t("scan_errors.meal_logged_title")}
+                message={t("scan_errors.meal_logged_msg", { meal: result?.meal_name || 'Food', category: selectedCategory })}
+                buttonText={t("scan_errors.go_to_dashboard")}
                 onClose={handleModalClose}
             />
         </View>
@@ -758,8 +762,6 @@ const styles = StyleSheet.create({
         color: "#1e293b",
         marginBottom: 8,
         textTransform: "capitalize",
-        flex: 1,
-        marginRight: 12,
     },
     badge: {
         paddingHorizontal: 10,
