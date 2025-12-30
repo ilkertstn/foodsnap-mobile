@@ -184,7 +184,15 @@ export const translations = {
             error_empty: "Please enter both email and password",
             error_login: "Login Failed",
             error_signup: "Sign Up Failed",
-            error_generic: "Error"
+            error_generic: "Error",
+            link_account: "Link Account",
+            save_progress: "Save Your Progress",
+            save_progress_desc: "Create an account to keep your data safe forever",
+            link_success: "Your account has been linked!",
+            link_failed: "Link Failed",
+            enter_email_pass: "Please enter email and password",
+            email_placeholder: "email@example.com",
+            create_pass_placeholder: "Create a password"
 
         },
         profile: {
@@ -527,7 +535,15 @@ export const translations = {
             error_empty: "Lütfen e-posta ve şifre giriniz",
             error_login: "Giriş Başarısız",
             error_signup: "Kayıt Başarısız",
-            error_generic: "Hata"
+            error_generic: "Hata",
+            link_account: "Hesabı Bağla",
+            save_progress: "İlerlemeni Kaydet",
+            save_progress_desc: "Verilerini sonsuza kadar güvende tutmak için bir hesap oluştur",
+            link_success: "Hesabınız bağlandı!",
+            link_failed: "Bağlantı Başarısız",
+            enter_email_pass: "Lütfen e-posta ve şifre giriniz",
+            email_placeholder: "eposta@ornek.com",
+            create_pass_placeholder: "Bir şifre oluşturun"
         },
 
         profile: {

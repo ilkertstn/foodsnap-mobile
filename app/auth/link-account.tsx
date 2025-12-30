@@ -13,12 +13,14 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View
 } from "react-native";
+import { useLanguage } from "../../context/LanguageContext";
 
 export default function LinkAccountScreen() {
     const router = useRouter();
     const { linkAccount } = useAuth();
+    const { t } = useLanguage();
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -56,18 +58,18 @@ export default function LinkAccountScreen() {
     const handleLink = async () => {
         const cleanEmail = email.trim();
         if (!cleanEmail || !password) {
-            showCustomAlert("error", "Error", "Please enter email and password");
+            showCustomAlert("error", t("auth.error_generic"), t("auth.enter_email_pass"));
             return;
         }
 
         setIsLoading(true);
         try {
             await linkAccount(cleanEmail, password);
-            showCustomAlert("success", "Success", "Your account has been linked!", () => {
+            showCustomAlert("success", t("auth.link_success_title") || "Success", t("auth.link_success"), () => {
                 router.replace("/(tabs)/profile");
             });
         } catch (error: any) {
-            showCustomAlert("error", "Link Failed", getAuthErrorMessage(error));
+            showCustomAlert("error", t("auth.link_failed"), getAuthErrorMessage(error));
         } finally {
             setIsLoading(false);
         }
@@ -90,16 +92,16 @@ export default function LinkAccountScreen() {
                         style={styles.logo}
                         contentFit="contain"
                     />
-                    <Text style={styles.title}>Save Your Progress</Text>
-                    <Text style={styles.subtitle}>Create an account to keep your data safe forever</Text>
+                    <Text style={styles.title}>{t("auth.save_progress")}</Text>
+                    <Text style={styles.subtitle}>{t("auth.save_progress_desc")}</Text>
                 </View>
 
                 <View style={styles.form}>
                     <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Email</Text>
+                        <Text style={styles.label}>{t("auth.email")}</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder="email@example.com"
+                            placeholder={t("auth.email_placeholder")}
                             value={email}
                             onChangeText={setEmail}
                             autoCapitalize="none"
@@ -108,10 +110,10 @@ export default function LinkAccountScreen() {
                     </View>
 
                     <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Password</Text>
+                        <Text style={styles.label}>{t("auth.password")}</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder="Create a password"
+                            placeholder={t("auth.create_pass_placeholder")}
                             value={password}
                             onChangeText={setPassword}
                             secureTextEntry
@@ -126,12 +128,12 @@ export default function LinkAccountScreen() {
                         {isLoading ? (
                             <ActivityIndicator color="white" />
                         ) : (
-                            <Text style={styles.buttonText}>Link Account</Text>
+                            <Text style={styles.buttonText}>{t("auth.link_account")}</Text>
                         )}
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.ghostButton} onPress={() => router.back()}>
-                        <Text style={styles.ghostButtonText}>Cancel</Text>
+                        <Text style={styles.ghostButtonText}>{t("common.cancel")}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
