@@ -46,6 +46,7 @@ export type Profile = {
         dinnerTime: string; // HH:mm, default "19:00"
     };
     unlockedBadges?: { badgeId: string; unlockedAt: number }[];
+    isOnboardingCompleted?: boolean;
 };
 
 export type Goals = {

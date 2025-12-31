@@ -195,6 +195,11 @@ export const translations = {
             create_pass_placeholder: "Create a password"
 
         },
+        onboarding: {
+            title: "Let's Get to Know You",
+            subtitle: "We need a few details to create your personalized plan.",
+            start: "Start Your Journey"
+        },
         profile: {
             title: "Profile",
             settings: "Settings",
@@ -544,6 +549,11 @@ export const translations = {
             enter_email_pass: "Lütfen e-posta ve şifre giriniz",
             email_placeholder: "eposta@ornek.com",
             create_pass_placeholder: "Bir şifre oluşturun"
+        },
+        onboarding: {
+            title: "Sizi Tanıyalım",
+            subtitle: "Kişisel planınızı hazırlamak için birkaç bilgiye ihtiyacımız var.",
+            start: "Yolculuğa Başla"
         },
 
         profile: {

@@ -27,6 +27,7 @@ const DEFAULT_PROFILE: Profile = {
     weightKg: 75,
     activity: "sedentary",
     goal: "maintain",
+    isOnboardingCompleted: false,
 };
 
 const DEFAULT_GOALS: Goals = {
