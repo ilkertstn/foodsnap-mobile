@@ -20,18 +20,19 @@ import {
 } from "react-native";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { API_BASE } from "../../config/env";
+import { useLanguage } from "../../context/LanguageContext";
 import { useMeals } from "../../context/MealContext";
 import { FoodResult, MealType } from "../../types";
 import { getAdjustedDate } from "../../utils/date";
 
-const API_BASE = "http://192.168.1.10:3000";
+// Remove hardcoded API_BASE
 
 const MEAL_TYPES: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
 
 import BarcodeScanner from "../../components/BarcodeScanner";
 import FoodSearchModal from "../../components/FoodSearchModal";
 import SuccessModal from "../../components/SuccessModal";
-import { useLanguage } from "../../context/LanguageContext";
 
 export default function ScanScreen() {
     const { t } = useLanguage();

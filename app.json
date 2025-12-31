@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "myapp",
-    "slug": "myapp",
+    "name": "FoodSnap",
+    "slug": "foodsnap",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/foodsnap-logo.png",
@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.myapp",
+      "bundleIdentifier": "com.ilker.foodsnap",
       "infoPlist": {
         "NSHealthShareUsageDescription": "FoodSnap uses your health data to track your daily activity and calculate calories burned.",
         "NSHealthUpdateUsageDescription": "FoodSnap can save your nutrition data to Apple Health."
@@ -21,13 +21,13 @@
       }
     },
     "android": {
+      "package": "com.ilker.foodsnap",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/foodsnap-logo.png",
         "backgroundColor": "transparent"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.myapp",
       "permissions": [
         "android.permission.health.READ_STEPS",
         "android.permission.health.READ_TOTAL_CALORIES_BURNED",
