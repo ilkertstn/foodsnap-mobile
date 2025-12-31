@@ -13,7 +13,8 @@
       "bundleIdentifier": "com.ilker.foodsnap",
       "infoPlist": {
         "NSHealthShareUsageDescription": "FoodSnap uses your health data to track your daily activity and calculate calories burned.",
-        "NSHealthUpdateUsageDescription": "FoodSnap can save your nutrition data to Apple Health."
+        "NSHealthUpdateUsageDescription": "FoodSnap can save your nutrition data to Apple Health.",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "entitlements": {
         "com.apple.developer.healthkit": true,
@@ -60,6 +61,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "8ec99875-7816-4d4f-a479-5e5f60f38f4f"
+      }
     }
   }
 }
