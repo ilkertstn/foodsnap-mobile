@@ -7,7 +7,7 @@
     "icon": "./assets/images/foodsnap-logo.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ilker.foodsnap",
@@ -25,7 +25,7 @@
       "package": "com.ilker.foodsnap",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/foodsnap-logo.png",
-        "backgroundColor": "transparent"
+        "backgroundColor": "#FFFFFF"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
