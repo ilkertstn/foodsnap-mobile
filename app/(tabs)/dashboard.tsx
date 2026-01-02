@@ -74,7 +74,13 @@ const StepsWidget = () => {
 
     // Demo mode for Expo Go (when native health modules aren't available)
     const DEMO_MODE = !isAvailable;
-    const demoData = { steps: 5234, activeCalories: 187, distance: 3240 };
+    const demoData = {
+        steps: 5234,
+        activeCalories: 187,
+        distance: 3240,
+        sleepMinutes: 450, // 7h 30m
+        heartRate: 72
+    };
 
     if (isLoading) return null;
 
@@ -83,11 +89,11 @@ const StepsWidget = () => {
         return (
             <View style={styles.healthCard}>
                 <View style={styles.healthHeader}>
-                    <Ionicons name="footsteps" size={24} color="#8b5cf6" />
+                    <Ionicons name="heart" size={24} color="#ef4444" />
                     <Text style={styles.healthTitle}>{t('dashboard.activity_title')}</Text>
                 </View>
                 <Text style={styles.healthDescription}>
-                    Sync your steps and activity from Apple Health or Google Fit
+                    Sync your Steps, Sleep, and Heart Rate from Apple Health or Google Fit
                 </Text>
                 <Pressable
                     style={styles.connectButton}
@@ -106,13 +112,23 @@ const StepsWidget = () => {
         return `${Math.round(meters)} m`;
     };
 
+    const formatSleep = (minutes: number) => {
+        const h = Math.floor(minutes / 60);
+        const m = minutes % 60;
+        return `${h}h ${m}m`;
+    };
+
     // Use demo data or real health data
     const displayData = DEMO_MODE ? demoData : (healthData || demoData);
+
+    // Fallback if sleep/bpm are undefined in old data
+    const sleep = displayData.sleepMinutes ?? 0;
+    const bpm = displayData.heartRate ?? 0;
 
     return (
         <View style={styles.healthCard}>
             <View style={styles.healthHeader}>
-                <Ionicons name="footsteps" size={24} color="#8b5cf6" />
+                <Ionicons name="heart-circle" size={28} color="#ef4444" />
                 <Text style={styles.healthTitle}>{t('dashboard.activity_title')}</Text>
                 {DEMO_MODE && (
                     <View style={{ backgroundColor: '#fef3c7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, marginLeft: 8 }}>
@@ -120,20 +136,45 @@ const StepsWidget = () => {
                     </View>
                 )}
             </View>
-            <View style={styles.healthStats}>
-                <View style={styles.healthStat}>
-                    <Text style={styles.healthStatValue}>{displayData.steps.toLocaleString()}</Text>
-                    <Text style={styles.healthStatLabel}>{t('dashboard.steps')}</Text>
+
+            {/* Main Steps Counter */}
+            <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                <Text style={{ fontSize: 36, fontWeight: '800', color: '#1e293b' }}>
+                    {displayData.steps.toLocaleString()}
+                </Text>
+                <Text style={{ fontSize: 14, color: '#64748b', fontWeight: '600', marginTop: -4 }}>
+                    {t('dashboard.steps')}
+                </Text>
+            </View>
+
+            {/* 2x2 Grid for Other Stats */}
+            <View style={styles.healthGrid}>
+                {/* Distance */}
+                <View style={styles.healthGridItem}>
+                    <Ionicons name="paper-plane-outline" size={20} color="#3b82f6" style={{ marginBottom: 4 }} />
+                    <Text style={styles.healthGridValue}>{formatDistance(displayData.distance)}</Text>
+                    <Text style={styles.healthGridLabel}>{t('dashboard.distance')}</Text>
                 </View>
-                <View style={styles.healthStatDivider} />
-                <View style={styles.healthStat}>
-                    <Text style={styles.healthStatValue}>{formatDistance(displayData.distance)}</Text>
-                    <Text style={styles.healthStatLabel}>{t('dashboard.distance')}</Text>
+
+                {/* Calories */}
+                <View style={styles.healthGridItem}>
+                    <Ionicons name="flame-outline" size={20} color="#f59e0b" style={{ marginBottom: 4 }} />
+                    <Text style={styles.healthGridValue}>{Math.round(displayData.activeCalories)}</Text>
+                    <Text style={styles.healthGridLabel}>{t('dashboard.active_cal')}</Text>
                 </View>
-                <View style={styles.healthStatDivider} />
-                <View style={styles.healthStat}>
-                    <Text style={styles.healthStatValue}>{Math.round(displayData.activeCalories)}</Text>
-                    <Text style={styles.healthStatLabel}>{t('dashboard.active_cal')}</Text>
+
+                {/* Sleep */}
+                <View style={styles.healthGridItem}>
+                    <Ionicons name="moon-outline" size={20} color="#8b5cf6" style={{ marginBottom: 4 }} />
+                    <Text style={styles.healthGridValue}>{formatSleep(sleep)}</Text>
+                    <Text style={styles.healthGridLabel}>Sleep</Text>
+                </View>
+
+                {/* Heart Rate */}
+                <View style={styles.healthGridItem}>
+                    <Ionicons name="pulse-outline" size={20} color="#ef4444" style={{ marginBottom: 4 }} />
+                    <Text style={styles.healthGridValue}>{bpm > 0 ? bpm : '--'}</Text>
+                    <Text style={styles.healthGridLabel}>BPM</Text>
                 </View>
             </View>
         </View>
@@ -760,5 +801,27 @@ const styles = StyleSheet.create({
     mealPlanSubtitle: {
         fontSize: 13,
         color: "#64748b",
+    },
+    healthGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+    },
+    healthGridItem: {
+        width: '48%',
+        backgroundColor: '#f8fafc',
+        padding: 12,
+        borderRadius: 16,
+        alignItems: 'center',
+    },
+    healthGridValue: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#1e293b',
+    },
+    healthGridLabel: {
+        fontSize: 12,
+        color: '#64748b',
+        fontWeight: '500',
     },
 });

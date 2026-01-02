@@ -6,6 +6,8 @@ export interface HealthData {
     steps: number;
     activeCalories: number;
     distance: number; // in meters
+    sleepMinutes: number;
+    heartRate: number; // avg bpm
 }
 
 export interface HealthPermissionStatus {
@@ -69,6 +71,8 @@ export const requestHealthPermissions = async (): Promise<boolean> => {
                     AppleHealthKit.Constants.Permissions.StepCount,
                     AppleHealthKit.Constants.Permissions.ActiveEnergyBurned,
                     AppleHealthKit.Constants.Permissions.DistanceWalkingRunning,
+                    AppleHealthKit.Constants.Permissions.SleepAnalysis,
+                    AppleHealthKit.Constants.Permissions.HeartRate,
                 ],
                 write: [],
             },
@@ -86,6 +90,8 @@ export const requestHealthPermissions = async (): Promise<boolean> => {
                 { accessType: 'read', recordType: 'Steps' },
                 { accessType: 'read', recordType: 'ActiveCaloriesBurned' },
                 { accessType: 'read', recordType: 'Distance' },
+                { accessType: 'read', recordType: 'SleepSession' },
+                { accessType: 'read', recordType: 'HeartRate' },
             ]);
             return granted.length > 0;
         } catch (e) {
@@ -100,7 +106,7 @@ export const requestHealthPermissions = async (): Promise<boolean> => {
  * Get today's health data
  */
 export const getTodayHealthData = async (): Promise<HealthData> => {
-    const defaultData: HealthData = { steps: 0, activeCalories: 0, distance: 0 };
+    const defaultData: HealthData = { steps: 0, activeCalories: 0, distance: 0, sleepMinutes: 0, heartRate: 0 };
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -108,24 +114,28 @@ export const getTodayHealthData = async (): Promise<HealthData> => {
 
     if (Platform.OS === 'ios' && AppleHealthKit) {
         try {
-            const [steps, calories, distance] = await Promise.all([
+            const [steps, calories, distance, sleep, heartRate] = await Promise.all([
                 getIOSStepCount(today, now),
                 getIOSActiveCalories(today, now),
                 getIOSDistance(today, now),
+                getIOSSleep(today, now),
+                getIOSHeartRate(today, now),
             ]);
-            return { steps, activeCalories: calories, distance };
+            return { steps, activeCalories: calories, distance, sleepMinutes: sleep, heartRate };
         } catch (e) {
             console.error('Error fetching HealthKit data', e);
             return defaultData;
         }
     } else if (Platform.OS === 'android' && HealthConnect) {
         try {
-            const [steps, calories, distance] = await Promise.all([
+            const [steps, calories, distance, sleep, heartRate] = await Promise.all([
                 getAndroidSteps(today, now),
                 getAndroidActiveCalories(today, now),
                 getAndroidDistance(today, now),
+                getAndroidSleep(today, now),
+                getAndroidHeartRate(today, now),
             ]);
-            return { steps, activeCalories: calories, distance };
+            return { steps, activeCalories: calories, distance, sleepMinutes: sleep, heartRate };
         } catch (e) {
             console.error('Error fetching Health Connect data', e);
             return defaultData;
@@ -214,4 +224,97 @@ const getAndroidDistance = async (startDate: Date, endDate: Date): Promise<numbe
     } catch {
         return 0;
     }
+};
+
+const getAndroidSleep = async (startDate: Date, endDate: Date): Promise<number> => {
+    try {
+        const result = await HealthConnect.readRecords('SleepSession', {
+            timeRangeFilter: {
+                operator: 'between',
+                startTime: startDate.toISOString(),
+                endTime: endDate.toISOString(),
+            },
+        });
+
+        // Sum duration of all sleep sessions in minutes
+        const totalDurationSeconds = result.records.reduce((sum: number, r: any) => {
+            const start = new Date(r.startTime).getTime();
+            const end = new Date(r.endTime).getTime();
+            return sum + ((end - start) / 1000);
+        }, 0);
+
+        return Math.floor(totalDurationSeconds / 60);
+    } catch {
+        return 0;
+    }
+};
+
+const getAndroidHeartRate = async (startDate: Date, endDate: Date): Promise<number> => {
+    try {
+        const result = await HealthConnect.readRecords('HeartRate', {
+            timeRangeFilter: {
+                operator: 'between',
+                startTime: startDate.toISOString(),
+                endTime: endDate.toISOString(),
+            },
+        });
+
+        if (!result.records || result.records.length === 0) return 0;
+
+        // Calculate average BPM from all samples
+        let totalBpm = 0;
+        let count = 0;
+
+        result.records.forEach((r: any) => {
+            r.samples.forEach((s: any) => {
+                totalBpm += s.beatsPerMinute;
+                count++;
+            });
+        });
+
+        return count > 0 ? Math.round(totalBpm / count) : 0;
+    } catch {
+        return 0;
+    }
+};
+
+// -- iOS Helpers for Sleep & HR --
+
+const getIOSSleep = (startDate: Date, endDate: Date): Promise<number> => {
+    return new Promise((resolve) => {
+        AppleHealthKit.getSleepSamples(
+            { startDate: startDate.toISOString(), endDate: endDate.toISOString() },
+            (err: any, results: any[]) => {
+                if (err || !results) {
+                    resolve(0);
+                    return;
+                }
+                // Filter for ASLEEP samples
+                const asleepSamples = results.filter(r => r.value === 'ASLEEP' || r.value === 'INBED');
+                const totalMinutes = asleepSamples.reduce((sum, r) => {
+                    const start = new Date(r.startDate).getTime();
+                    const end = new Date(r.endDate).getTime();
+                    return sum + ((end - start) / 1000 / 60);
+                }, 0);
+                resolve(Math.round(totalMinutes));
+            }
+        );
+    });
+};
+
+const getIOSHeartRate = (startDate: Date, endDate: Date): Promise<number> => {
+    return new Promise((resolve) => {
+        AppleHealthKit.getHeartRateSamples(
+            { startDate: startDate.toISOString(), endDate: endDate.toISOString(), limit: 100 },
+            (err: any, results: any[]) => {
+                if (err || !results || results.length === 0) {
+                    resolve(0);
+                    return;
+                }
+                // Average of recent samples
+                const total = results.reduce((sum, r) => sum + r.value, 0);
+                resolve(Math.round(total / results.length));
+            }
+        );
+    });
 };
