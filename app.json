@@ -7,7 +7,7 @@
     "icon": "./assets/images/foodsnap-logo.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ilker.foodsnap",
