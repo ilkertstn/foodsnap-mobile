@@ -15,7 +15,8 @@
         },
         "production": {
             "env": {
-                "EXPO_PUBLIC_API_BASE": "https://foodsnap-api.vercel.app"
+                "EXPO_PUBLIC_API_BASE": "https://foodsnap-api.vercel.app",
+                "EXPO_NO_DOCTOR": "true"
             }
         }
     },
