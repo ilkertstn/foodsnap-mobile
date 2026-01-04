@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ilker.foodsnap.mobile",
+      "bundleIdentifier": "com.ilkertastan.foodsnapp",
       "buildNumber": "1",
       "infoPlist": {
         "NSHealthShareUsageDescription": "FoodSnap uses your health data to track your daily activity and calculate calories burned.",
