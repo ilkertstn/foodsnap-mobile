@@ -5,12 +5,12 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/foodsnap-logo.png",
-    "scheme": "myapp",
+    "scheme": "foodsnap",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ilkertastan.foodsnapp",
+      "bundleIdentifier": "com.ilkertastan.foodsnap",
       "buildNumber": "1",
       "infoPlist": {
         "NSHealthShareUsageDescription": "FoodSnap uses your health data to track your daily activity and calculate calories burned.",
@@ -23,7 +23,7 @@
       }
     },
     "android": {
-      "package": "com.ilker.foodsnap",
+      "package": "com.ilkertastan.foodsnap",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/foodsnap-logo.png",
         "backgroundColor": "#FFFFFF"
