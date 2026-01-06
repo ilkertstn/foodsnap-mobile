@@ -55,7 +55,7 @@ export default function SplashScreen() {
 
       <View style={styles.content}>
         <Image
-          source={require("../assets/images/foodsnap-logo.png")}
+          source={require("../assets/images/fitera-icon.png")}
           style={styles.logo}
           contentFit="contain"
         />
@@ -64,7 +64,7 @@ export default function SplashScreen() {
           <Animated.View style={[styles.progressBar, animatedProgressStyle]} />
         </View>
 
-        <Text style={styles.appName}>FoodSnap</Text>
+        <Text style={styles.appName}>Fitera</Text>
       </View>
     </View>
   );

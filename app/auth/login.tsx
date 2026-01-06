@@ -109,7 +109,7 @@ export default function LoginScreen() {
             <View style={styles.content}>
                 <View style={styles.header}>
                     <Image
-                        source={require("../../assets/images/foodsnap-logo.png")}
+                        source={require("../../assets/images/fitera-icon.png")}
                         style={styles.logo}
                         contentFit="contain"
                     />

@@ -1,20 +1,20 @@
 {
   "expo": {
-    "name": "FoodSnap",
-    "slug": "foodsnap",
+    "name": "Fitera",
+    "slug": "fitera",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/foodsnap-logo.png",
-    "scheme": "foodsnap",
+    "icon": "./assets/images/fitera-icon.png",
+    "scheme": "fitera",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ilkertastan.foodsnap",
+      "bundleIdentifier": "com.ilkertastan.fitera",
       "buildNumber": "1",
       "infoPlist": {
-        "NSHealthShareUsageDescription": "FoodSnap uses your health data to track your daily activity and calculate calories burned.",
-        "NSHealthUpdateUsageDescription": "FoodSnap can save your nutrition data to Apple Health.",
+        "NSHealthShareUsageDescription": "Fitera uses your health data to track your daily activity and calculate calories burned.",
+        "NSHealthUpdateUsageDescription": "Fitera can save your nutrition data to Apple Health.",
         "ITSAppUsesNonExemptEncryption": false
       },
       "entitlements": {
@@ -23,9 +23,9 @@
       }
     },
     "android": {
-      "package": "com.ilkertastan.foodsnap",
+      "package": "com.ilkertastan.fitera",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/foodsnap-logo.png",
+        "foregroundImage": "./assets/images/fitera-icon.png",
         "backgroundColor": "#FFFFFF"
       },
       "edgeToEdgeEnabled": true,
@@ -42,7 +42,7 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/fitera-icon.png"
     },
     "plugins": [
       "expo-router",
@@ -68,8 +68,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "8ec99875-7816-4d4f-a479-5e5f60f38f4f"
+        "projectId": "e13edb45-b550-4f06-a855-cba9eb5b285c"
       }
-    }
+    },
+    "owner": "ilkertstn"
   }
 }

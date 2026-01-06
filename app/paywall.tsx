@@ -39,7 +39,7 @@ export default function Paywall() {
 
             <View style={styles.content}>
                 <Image
-                    source={require("../assets/images/foodsnap-logo.png")}
+                    source={require("../assets/images/fitera-icon.png")}
                     style={styles.logo}
                     contentFit="contain"
                 />

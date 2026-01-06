@@ -154,7 +154,7 @@ export const translations = {
             }
         },
         paywall: {
-            welcome: "Welcome to FoodSnap",
+            welcome: "Welcome to Fitera",
             trial_expired: "Trial Expired",
             guest_desc: "Your 3-day guest trial has ended. Sign up to continue tracking!",
             start_desc: "Start your nutrition journey today.",
@@ -510,7 +510,7 @@ export const translations = {
         },
 
         paywall: {
-            welcome: "FoodSnap'e Hoşgeldiniz",
+            welcome: "Fitera'ya Hoşgeldiniz",
             trial_expired: "Deneme Süresi Doldu",
             guest_desc: "3 günlük misafir deneme süreniz doldu. Takibe devam etmek için kayıt olun!",
             start_desc: "Beslenme yolculuğunuza bugün başlayın.",
