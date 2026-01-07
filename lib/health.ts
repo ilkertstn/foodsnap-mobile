@@ -20,18 +20,27 @@ let AppleHealthKit: any = null;
 let HealthConnect: any = null;
 
 // Initialize platform-specific health module
-const initHealthModule = async () => {
+import { NativeModules } from 'react-native';
+
+const initHealthModule = () => {
     if (Platform.OS === 'ios') {
         try {
-            AppleHealthKit = require('react-native-health').default;
+            const pkg = require('react-native-health');
+            AppleHealthKit = pkg.default || pkg;
+
+            // Fallback to NativeModules if wrapper is empty (bridging issue)
+            if ((!AppleHealthKit || !AppleHealthKit.isAvailable) && NativeModules.AppleHealthKit) {
+                AppleHealthKit = NativeModules.AppleHealthKit;
+            }
         } catch (e) {
-            console.log('HealthKit not available');
+            console.warn('HealthKit load error:', e);
         }
     } else if (Platform.OS === 'android') {
         try {
-            HealthConnect = require('react-native-health-connect');
+            const pkg = require('react-native-health-connect');
+            HealthConnect = pkg.default || pkg;
         } catch (e) {
-            console.log('Health Connect not available');
+            console.warn('Health Connect not available');
         }
     }
 };
@@ -44,6 +53,12 @@ initHealthModule();
  */
 export const isHealthAvailable = async (): Promise<boolean> => {
     if (Platform.OS === 'ios' && AppleHealthKit) {
+        // Check if method exists (it might be missing in Expo Go or if native linking failed)
+        if (typeof AppleHealthKit.isAvailable !== 'function') {
+            console.warn('HealthKit native module is missing (expected in Expo Go). Falling back to Demo Mode.');
+            return false;
+        }
+
         return new Promise((resolve) => {
             AppleHealthKit.isAvailable((err: any, available: boolean) => {
                 resolve(!err && available);

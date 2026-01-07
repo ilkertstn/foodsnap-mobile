@@ -485,6 +485,96 @@ export default function Profile() {
                         )}
                     </View>
 
+                    {/* Nutrition Preferences Section */}
+                    <View style={styles.card}>
+                        <SectionHeader title={t('profile.nutritionPreferences') || "Nutrition Preferences"} icon="restaurant" />
+
+                        {isEditing ? (
+                            <View style={{ marginTop: 12 }}>
+                                {/* Diet Type */}
+                                <Text style={styles.inputLabel}>{t("profile.dietType")}</Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
+                                    {["standard", "vegetarian", "vegan", "keto", "paleo", "pescetarian"].map((d) => (
+                                        <Pressable
+                                            key={d}
+                                            style={[styles.chip, localProfile.dietType === d && styles.chipSelected]}
+                                            onPress={() => setLocalProfile({ ...localProfile, dietType: d })}
+                                        >
+                                            <Text style={[styles.chipText, localProfile.dietType === d && styles.chipTextSelected]}>
+                                                {t(`profile.diet_${d}`)}
+                                            </Text>
+                                        </Pressable>
+                                    ))}
+                                </ScrollView>
+
+                                {/* Allergies */}
+                                <Text style={styles.inputLabel}>{t("profile.allergies")}</Text>
+                                <View style={styles.wrapContainer}>
+                                    {["gluten", "dairy", "nut", "shellfish", "none"].map((a) => {
+                                        const currentAllergies = localProfile.allergies || [];
+                                        const isSelected = currentAllergies.includes(a);
+                                        return (
+                                            <Pressable
+                                                key={a}
+                                                style={[styles.smallChip, isSelected && styles.smallChipSelected]}
+                                                onPress={() => {
+                                                    let newAllergies = [];
+                                                    if (a === "none") {
+                                                        newAllergies = ["none"];
+                                                    } else {
+                                                        newAllergies = isSelected
+                                                            ? currentAllergies.filter(x => x !== a)
+                                                            : [...currentAllergies.filter(x => x !== "none"), a];
+                                                    }
+                                                    setLocalProfile({ ...localProfile, allergies: newAllergies });
+                                                }}
+                                            >
+                                                <Text style={[styles.smallChipText, isSelected && styles.smallChipTextSelected]}>
+                                                    {t(`profile.allergy_${a}`)}
+                                                </Text>
+                                            </Pressable>
+                                        );
+                                    })}
+                                </View>
+
+                                {/* Meals Per Day */}
+                                <Text style={[styles.inputLabel, { marginTop: 16 }]}>{t("profile.mealsPerDay")}</Text>
+                                <View style={{ flexDirection: "row", gap: 12, marginTop: 8 }}>
+                                    {[3, 4, 5, 6].map(num => (
+                                        <Pressable
+                                            key={num}
+                                            style={[styles.circleButton, localProfile.mealsPerDay === num && styles.circleButtonSelected]}
+                                            onPress={() => setLocalProfile({ ...localProfile, mealsPerDay: num })}
+                                        >
+                                            <Text style={[styles.circleText, localProfile.mealsPerDay === num && styles.circleTextSelected]}>{num}</Text>
+                                        </Pressable>
+                                    ))}
+                                </View>
+                            </View>
+                        ) : (
+                            <View style={styles.readOnlyGrid}>
+                                <View style={styles.readOnlyItem}>
+                                    <Text style={styles.readOnlyLabel}>{t('profile.dietType')}</Text>
+                                    <Text style={styles.readOnlyValue}>
+                                        {t(`profile.diet_${profile.dietType || "standard"}`)}
+                                    </Text>
+                                </View>
+                                <View style={styles.readOnlyItem}>
+                                    <Text style={styles.readOnlyLabel}>{t('profile.mealsPerDay')}</Text>
+                                    <Text style={styles.readOnlyValue}>{profile.mealsPerDay || 4}</Text>
+                                </View>
+                                <View style={[styles.readOnlyItem, { width: '100%' }]}>
+                                    <Text style={styles.readOnlyLabel}>{t('profile.allergies')}</Text>
+                                    <Text style={styles.readOnlyValue}>
+                                        {(profile.allergies && profile.allergies.length > 0 && !profile.allergies.includes("none"))
+                                            ? profile.allergies.map(a => t(`profile.allergy_${a}`)).join(", ")
+                                            : t('profile.allergy_none')}
+                                    </Text>
+                                </View>
+                            </View>
+                        )}
+                    </View>
+
                     {isEditing && (
                         <>
                             <View style={styles.sectionHeader}>
@@ -1170,6 +1260,80 @@ const styles = StyleSheet.create({
     },
     languageButtonTextActive: {
         color: "white",
+    },
+    horizontalScroll: {
+        flexDirection: 'row',
+        marginBottom: 16,
+        marginTop: 8,
+    },
+    chip: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: '#f1f5f9',
+        marginRight: 8,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+    },
+    chipSelected: {
+        backgroundColor: '#eff6ff',
+        borderColor: '#3b82f6',
+    },
+    chipText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#64748b',
+    },
+    chipTextSelected: {
+        color: '#3b82f6',
+    },
+    wrapContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 8,
+    },
+    smallChip: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 16,
+        backgroundColor: '#f1f5f9',
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+    },
+    smallChipSelected: {
+        backgroundColor: '#eff6ff',
+        borderColor: '#3b82f6',
+    },
+    smallChipText: {
+        fontSize: 13,
+        fontWeight: '500',
+        color: '#64748b',
+    },
+    smallChipTextSelected: {
+        color: '#3b82f6',
+    },
+    circleButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#f1f5f9',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+    },
+    circleButtonSelected: {
+        backgroundColor: '#3b82f6',
+        borderColor: '#3b82f6',
+    },
+    circleText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#64748b',
+    },
+    circleTextSelected: {
+        color: '#ffffff',
     },
 });
 

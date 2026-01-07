@@ -57,6 +57,63 @@ export const DEMO_RECIPES: Recipe[] = LOCAL_DB.slice(0, 5);
 export const isApiConfigured = () => true;
 
 /**
+ * Helper to check if a recipe matches diet/allergy constraints
+ */
+function isSafeForDiet(recipe: Recipe, dietType?: string, allergies?: string[]): boolean {
+    const combinedIngredients = [
+        ...(recipe.extendedIngredients?.map(i => i.name) || []),
+        ...(recipe.summary?.split(',') || []),
+        recipe.title
+    ].join(' ').toLowerCase();
+
+    // 1. Check Diet Type
+    if (dietType) {
+        const dt = dietType.toLowerCase();
+        if (dt === 'vegetarian') {
+            if (['chicken', 'beef', 'pork', 'fish', 'tuna', 'salmon', 'meat', 'steak', 'turkey'].some(i => combinedIngredients.includes(i))) return false;
+        }
+        else if (dt === 'vegan') {
+            if (['chicken', 'beef', 'pork', 'fish', 'tuna', 'salmon', 'meat', 'steak', 'turkey', 'egg', 'cheese', 'milk', 'dairy', 'honey', 'butter', 'yogurt', 'cream'].some(i => combinedIngredients.includes(i))) return false;
+        }
+        else if (dt === 'pescetarian') {
+            if (['chicken', 'beef', 'pork', 'meat', 'steak', 'turkey'].some(i => combinedIngredients.includes(i))) return false;
+        }
+        else if (dt === 'keto') {
+            // Primitive check: high carb ingredients
+            if (['rice', 'pasta', 'bread', 'potato', 'sugar', 'flour', 'corn', 'banana'].some(i => combinedIngredients.includes(i))) return false;
+            // Also check macros if available (Keto usually < 10% carbs)
+            const c = parseG(recipe.carbs);
+            const k = recipe.calories;
+            if (k > 0 && (c * 4) / k > 0.15) return false; // Strict check
+        }
+        else if (dt === 'paleo') {
+            if (['rice', 'pasta', 'bread', 'sugar', 'flour', 'corn', 'bean', 'soy', 'dairy', 'milk', 'cheese'].some(i => combinedIngredients.includes(i))) return false;
+        }
+    }
+
+    // 2. Check Allergies
+    if (allergies && allergies.length > 0) {
+        for (const allergy of allergies) {
+            const a = allergy.toLowerCase();
+            if (a === 'gluten') {
+                if (['wheat', 'bread', 'pasta', 'flour', 'rye', 'barley', 'cracker', 'cake'].some(i => combinedIngredients.includes(i))) return false;
+            }
+            if (a === 'dairy') {
+                if (['milk', 'cheese', 'yogurt', 'butter', 'cream', 'whey', 'casein'].some(i => combinedIngredients.includes(i))) return false;
+            }
+            if (a === 'nut') {
+                if (['nut', 'almond', 'cashew', 'walnut', 'pecan', 'peanut'].some(i => combinedIngredients.includes(i))) return false;
+            }
+            if (a === 'shellfish') {
+                if (['shrimp', 'crab', 'lobster', 'clam', 'mussel', 'oyster', 'prawn'].some(i => combinedIngredients.includes(i))) return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+/**
  * Search recipes by macro targets
  * Since we have local data, we just filter and sort by relevance
  */
@@ -68,6 +125,8 @@ export async function searchRecipesByNutrients(params: {
     maxCarbs?: number;
     maxFat?: number;
     number?: number;
+    dietType?: string;
+    allergies?: string[];
 }): Promise<Recipe[]> {
     const limit = params.number || 10;
 
@@ -93,6 +152,9 @@ export async function searchRecipesByNutrients(params: {
 
         const f = parseG(r.fat);
         if (params.maxFat && f > params.maxFat) return false;
+
+        // DIET & ALLERGY CHECK
+        if (!isSafeForDiet(r, params.dietType, params.allergies)) return false;
 
         return true;
     });

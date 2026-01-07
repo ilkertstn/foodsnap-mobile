@@ -47,6 +47,12 @@ export type Profile = {
     };
     unlockedBadges?: { badgeId: string; unlockedAt: number }[];
     isOnboardingCompleted?: boolean;
+    // Expanded Onboarding Fields
+    sleepHours?: number;
+    dietType?: string;
+    allergies?: string[];
+    mealsPerDay?: number;
+    weeklyGoalRate?: number; // kg per week (e.g. 0.5)
 };
 
 export type Goals = {

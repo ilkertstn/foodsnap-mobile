@@ -20,7 +20,7 @@ import { getAdjustedDate } from "../../utils/date";
 
 export default function RecipesScreen() {
     const insets = useSafeAreaInsets();
-    const { getDailySummary, goals } = useMeals();
+    const { getDailySummary, goals, profile } = useMeals();
     const { t } = useLanguage();
 
     const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -58,6 +58,8 @@ export default function RecipesScreen() {
                 maxProtein: Math.min(remainingProtein + 20, 60),
                 minProtein: 10,
                 number: 10,
+                dietType: profile.dietType,
+                allergies: profile.allergies
             });
 
             await new Promise(r => setTimeout(r, 400));

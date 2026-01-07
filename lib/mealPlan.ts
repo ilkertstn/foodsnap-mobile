@@ -8,13 +8,14 @@ export interface Recipe {
   title: string;
   image?: string;
   calories: number;
-  protein: string; 
+  protein: string;
   carbs: string;
-  fat: string;     
+  fat: string;
   minutes?: number;
   ingredients?: string[];
   tags?: string[];
   mealTypes?: ("breakfast" | "lunch" | "dinner" | "snack")[];
+  area: string;
 }
 
 export interface MealPlanDay {
@@ -63,9 +64,25 @@ const toRecipe = (r: any): Recipe => ({
   ingredients: r.ingredients ?? [],
   tags: r.tags ?? [],
   mealTypes: r.mealTypes ?? [],
+  area: r.raw?.area ?? r.area ?? "Unknown",
 });
 
-const ALL_RECIPES: Recipe[] = (seed as any[]).map(toRecipe);
+const EXCLUDED_AREAS = [
+  "Chinese", "Japanese", "Thai", "Vietnamese", "Filipino", "Malaysian", "Indian"
+];
+
+const PREFERRED_AREAS = [
+  "Turkish", "American", "British", "French", "Italian", "Spanish", "Greek", "German", "Irish"
+];
+
+const ALL_RECIPES: Recipe[] = (seed as any[])
+  .map(toRecipe)
+  .filter(r => !EXCLUDED_AREAS.includes(r.area))
+  // Optional: We can boost preferred areas here or in scoring, but filtering is enough for exclusion.
+  // We can sort to ensure preferred ones are picked more often if we want, but "pickBest" uses scoring.
+  // Let's rely on scoring but maybe boost them slightly there?
+  // For now, simple exclusion is the main requirement.
+  ;
 
 const parseG = (v: string | undefined) => parseInt((v ?? "0").replace("g", ""), 10) || 0;
 
@@ -93,7 +110,7 @@ function pickBest(
     .filter(r => !usedIds.has(r.id))
     .map(r => ({ r, s: scoreRecipe(r, target) }))
     .sort((a, b) => a.s - b.s)
-    .slice(0, Math.max(6, limit * 6)); 
+    .slice(0, Math.max(6, limit * 6));
 
 
   const out: Recipe[] = [];
@@ -127,18 +144,47 @@ function categorizeIngredient(name: string): ShoppingListItem["category"] {
 }
 
 
+// Update signature
 export async function generateMealPlan(
   goals: { calories: number; protein: number; carbs: number; fat: number },
+  preferences?: {
+    dietType?: string;
+    allergies?: string[];
+    mealsPerDay?: number;
+  },
   startDate: Date = new Date()
 ): Promise<MealPlan> {
   const days: MealPlanDay[] = [];
 
-  const split = {
+  const mealsPerDay = preferences?.mealsPerDay || 4;
+  const dietType = preferences?.dietType;
+  const allergies = preferences?.allergies;
+
+  // Meal Split Logic
+  let split = {
     breakfast: 0.25,
     lunch: 0.35,
     dinner: 0.30,
     snack: 0.10,
   };
+
+  if (mealsPerDay === 3) {
+    // No snacking
+    split = {
+      breakfast: 0.30,
+      lunch: 0.40,
+      dinner: 0.30,
+      snack: 0.0,
+    };
+  } else if (mealsPerDay >= 5) {
+    // More snacks (future scope, treated as 4 for now but maybe slightly more snack heavy)
+    split = {
+      breakfast: 0.20,
+      lunch: 0.30,
+      dinner: 0.30,
+      snack: 0.20,
+    };
+  }
 
   // ✅ Haftalık unique için: günlerin dışına aldık
   const usedWeek = new Set<string>();
@@ -153,15 +199,55 @@ export async function generateMealPlan(
     target: Targets,
     limit = 1
   ): Recipe[] => {
+
+    // Filter by Diet/Allergy FIRST (using same logic from recipes.ts but we need to implement it here or import it)
+    // IMPORTANT: Since we are in a different file and can't easily import isSafeForDiet since it's not exported,
+    // we should export isSafeForDiet from recipes.ts OR re-implement basic check here.
+    // For simplicity and robustness, I will re-implement the filtering call by utilizing the fact that we can filter BEFORE scoring.
+    // BUT calculate score requires raw recipe. 
+    // Let's filter pool first.
+
+    // Better: Helper function
+    const isSafe = (r: Recipe) => {
+      const ingredients = [
+        ...(r.ingredients || []),
+        r.title
+      ].join(' ').toLowerCase();
+
+      // Diet Type (Simple Check for mealPlan)
+      if (dietType) {
+        const dt = dietType.toLowerCase();
+        if (dt === 'vegetarian') {
+          if (['chicken', 'beef', 'pork', 'fish', 'meat'].some(i => ingredients.includes(i))) return false;
+        }
+        else if (dt === 'vegan') {
+          if (['chicken', 'beef', 'pork', 'fish', 'meat', 'egg', 'cheese', 'milk', 'honey'].some(i => ingredients.includes(i))) return false;
+        }
+      }
+
+      // Allergies
+      if (allergies && allergies.length > 0) {
+        for (const a of allergies) {
+          if (a === 'gluten' && ['bread', 'pasta', 'flour', 'wheat'].some(i => ingredients.includes(i))) return false;
+          if (a === 'dairy' && ['milk', 'cheese', 'yogurt', 'cream'].some(i => ingredients.includes(i))) return false;
+          if (a === 'nut' && ['nut', 'almond', 'peanut'].some(i => ingredients.includes(i))) return false;
+        }
+      }
+
+      return true;
+    };
+
+    const safePool = pool.filter(isSafe);
+
     // önce unique dene
-    const uniquePicked = pickBest(pool, target, usedWeek, limit);
+    const uniquePicked = pickBest(safePool, target, usedWeek, limit);
 
     if (uniquePicked.length === limit) return uniquePicked;
 
     // unique kalmadıysa ve seed küçükse tekrar izni ver
     if (allowRepeatsIfNeeded) {
       const tempUsed = new Set<string>(); // o öğün içinde tekrar etmesin
-      return pickBest(pool, target, tempUsed, limit);
+      return pickBest(safePool, target, tempUsed, limit);
     }
 
     // seed yeterli olmalıydı ama yine de garanti:
@@ -191,6 +277,8 @@ export async function generateMealPlan(
       carbs: Math.round(goals.carbs * split.dinner),
       fat: Math.round(goals.fat * split.dinner),
     };
+
+    // Only calculate snack target if we have snacks
     const snackTarget: Targets = {
       calories: Math.round(goals.calories * split.snack),
       protein: Math.round(goals.protein * split.snack),
@@ -205,7 +293,11 @@ export async function generateMealPlan(
     const dinner =
       pickBestWeekUnique(mealPool("dinner"), dinnerTarget, 1)[0] ?? null;
 
-    const snacks = pickBestWeekUnique(mealPool("snack"), snackTarget, 1);
+    // Only pick snacks if split.snack > 0
+    let snacks: Recipe[] = [];
+    if (split.snack > 0) {
+      snacks = pickBestWeekUnique(mealPool("snack"), snackTarget, mealsPerDay >= 5 ? 2 : 1);
+    }
 
     const totalCalories =
       (breakfast?.calories || 0) +

@@ -23326,5 +23326,160 @@
       "sourceUrl": ""
     },
     "isEstimated": true
+  },
+  {
+    "id": "trk_101",
+    "name": "Karnıyarık (Stuffed Eggplant)",
+    "image": "https://www.themealdb.com/images/media/meals/ampz9v1763787134.jpg",
+    "mealTypes": [
+      "lunch",
+      "dinner"
+    ],
+    "kcal": 450,
+    "protein": 18,
+    "carbs": 25,
+    "fat": 32,
+    "ingredients": [
+      "Eggplant",
+      "Ground Beef",
+      "Onion",
+      "Tomato",
+      "Garlic",
+      "Parsley",
+      "Green Pepper"
+    ],
+    "tags": [
+      "Beef",
+      "Turkish"
+    ],
+    "raw": {
+      "area": "Turkish",
+      "instructions": "Fried eggplants stuffed with minced meat mixture."
+    },
+    "isEstimated": true
+  },
+  {
+    "id": "trk_102",
+    "name": "Mantı (Turkish Dumplings)",
+    "image": "https://www.themealdb.com/images/media/meals/1525876468.jpg",
+    "mealTypes": [
+      "lunch",
+      "dinner"
+    ],
+    "kcal": 550,
+    "protein": 22,
+    "carbs": 65,
+    "fat": 20,
+    "ingredients": [
+      "Flour",
+      "Egg",
+      "Ground Beef",
+      "Onion",
+      "Yogurt",
+      "Garlic",
+      "Butter",
+      "Red Pepper"
+    ],
+    "tags": [
+      "Beef",
+      "Turkish",
+      "Pasta"
+    ],
+    "raw": {
+      "area": "Turkish",
+      "instructions": "Tiny dumplings filled with spiced meat, served with garlic yogurt."
+    },
+    "isEstimated": true
+  },
+  {
+    "id": "trk_103",
+    "name": "Menemen",
+    "image": "https://www.themealdb.com/images/media/meals/g373701551450225.jpg",
+    "mealTypes": [
+      "breakfast",
+      "lunch"
+    ],
+    "kcal": 350,
+    "protein": 14,
+    "carbs": 12,
+    "fat": 28,
+    "ingredients": [
+      "Egg",
+      "Tomato",
+      "Green Pepper",
+      "Onion",
+      "Olive Oil"
+    ],
+    "tags": [
+      "Vegetarian",
+      "Turkish",
+      "Breakfast"
+    ],
+    "raw": {
+      "area": "Turkish",
+      "instructions": "Scrambled eggs cooked with tomatoes and peppers."
+    },
+    "isEstimated": true
+  },
+  {
+    "id": "trk_104",
+    "name": "Mercimek Çorbası (Lentil Soup)",
+    "image": "https://www.themealdb.com/images/media/meals/58oia61564916529.jpg",
+    "mealTypes": [
+      "lunch",
+      "dinner",
+      "snack"
+    ],
+    "kcal": 280,
+    "protein": 15,
+    "carbs": 35,
+    "fat": 8,
+    "ingredients": [
+      "Red Lentils",
+      "Onion",
+      "Carrot",
+      "Potato",
+      "Olive Oil"
+    ],
+    "tags": [
+      "Vegetarian",
+      "Turkish",
+      "Soup"
+    ],
+    "raw": {
+      "area": "Turkish",
+      "instructions": "Creamy red lentil soup."
+    },
+    "isEstimated": true
+  },
+  {
+    "id": "trk_105",
+    "name": "Lahmacun",
+    "image": "https://www.themealdb.com/images/media/meals/tqd3ac1763786065.jpg",
+    "mealTypes": [
+      "lunch",
+      "dinner"
+    ],
+    "kcal": 400,
+    "protein": 16,
+    "carbs": 45,
+    "fat": 15,
+    "ingredients": [
+      "Flour",
+      "Ground Beef",
+      "Tomato",
+      "Onion",
+      "Parsley",
+      "Lemon"
+    ],
+    "tags": [
+      "Beef",
+      "Turkish"
+    ],
+    "raw": {
+      "area": "Turkish",
+      "instructions": "Thin crispy dough topped with minced meat and vegetables."
+    },
+    "isEstimated": true
   }
 ]

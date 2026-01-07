@@ -83,6 +83,12 @@ export const translations = {
             update_weight: "Update your weight in Profile to track progress.",
             calorie_intake: "Calorie Intake",
             weekly_avg: "Weekly Avg",
+            monthly_avg: "Monthly Avg",
+            view_weekly: "Weekly",
+            view_monthly: "Monthly",
+            last_7_days: "Last 7 Days",
+            last_30_days: "Last 30 Days",
+
             daily_goal: "Daily Goal",
             vs_avg: "Vs Avg",
             kcal: "kcal",
@@ -198,7 +204,13 @@ export const translations = {
         onboarding: {
             title: "Let's Get to Know You",
             subtitle: "We need a few details to create your personalized plan.",
-            start: "Start Your Journey"
+            start: "Start Your Journey",
+            step1: "Physical Basics",
+            step2: "Lifestyle & Activity",
+            step3: "Nutrition & Habits",
+            step4: "Your Goal",
+            next: "Next",
+            back: "Back"
         },
         profile: {
             title: "Profile",
@@ -248,6 +260,28 @@ export const translations = {
             carbs: "Carbs",
             fat: "Fat",
             calories: "Calories",
+            // Expanded Fields
+            sleepHours: "Sleep (Hours/Day)",
+            waterTarget: "Daily Water Target",
+            dietType: "Diet Type",
+            allergies: "Allergies / Intolerances",
+            mealsPerDay: "Meals Per Day",
+            weeklyPace: "Weekly Pace",
+            // Options
+            diet_standard: "Standard (Everything)",
+            diet_vegetarian: "Vegetarian",
+            diet_vegan: "Vegan",
+            diet_keto: "Ketogenic",
+            diet_paleo: "Paleo",
+            diet_pescetarian: "Pescetarian",
+            allergy_gluten: "Gluten Free",
+            allergy_dairy: "Dairy Free",
+            allergy_nut: "Nut Free",
+            allergy_shellfish: "Shellfish Free",
+            allergy_none: "None",
+            pace_relaxed: "Relaxed (0.25 kg/week)",
+            pace_normal: "Normal (0.5 kg/week)",
+            pace_aggressive: "Aggressive (0.8 kg/week)",
             waterGoal: "Water Goal",
             hydrationGoal: "Hydration Goal",
             dailyWater: "Daily Water",
@@ -256,11 +290,12 @@ export const translations = {
             sectionTitle: "Section Title",
             sectionHeader: "Section Header",
             autoCalculated: "Auto Calculated",
-            autocalculatedInfo: "Auto calculated based on your activity level and weight.",
+            autoCalculatedInfo: "Auto calculated based on your activity level and weight.",
             manual: "Manual",
             manualInfo: "Manual mode allows you to set your own goals.",
             successTitle: "Profile Saved",
-            successMessage: "Your goals have been updated based on your new profile settings."
+            successMessage: "Your goals have been updated based on your new profile settings.",
+            nutritionPreferences: "Nutrition Preferences",
         },
         badges: {
             first_log: {
@@ -431,7 +466,12 @@ export const translations = {
             no_weight_data: "Ağırlık verisi yok.",
             update_weight: "Profile ağırlığınızı güncellerek ilerleyişinizi takip edin.",
             calorie_intake: "Kalori Tüketim",
-            weekly_avg: "Haftalık Ortalama",
+            weekly_avg: "Haftalık Ort",
+            monthly_avg: "Aylık Ort",
+            view_weekly: "Haftalık",
+            view_monthly: "Aylık",
+            last_7_days: "Son 7 Gün",
+            last_30_days: "Son 30 Gün",
             daily_goal: "Günlük Hedef",
             vs_avg: "Ortalama ile karşılaştır",
             kcal: "kcal",
@@ -553,7 +593,13 @@ export const translations = {
         onboarding: {
             title: "Sizi Tanıyalım",
             subtitle: "Kişisel planınızı hazırlamak için birkaç bilgiye ihtiyacımız var.",
-            start: "Yolculuğa Başla"
+            start: "Yolculuğa Başla",
+            step1: "Fiziksel Bilgiler",
+            step2: "Yaşam Tarzı",
+            step3: "Beslenme & Alışkanlıklar",
+            step4: "Hedefin",
+            next: "İleri",
+            back: "Geri"
         },
 
         profile: {
@@ -620,7 +666,28 @@ export const translations = {
             manual: "Manuel",
             manualInfo: "Manuel modda kendi hedeflerinizi ayarlayabilirsiniz.",
             successTitle: "Profil Kaydedildi",
-            successMessage: "Hedefleriniz, yeni profil ayarlarınızına göre güncellendi."
+            successMessage: "Hedefleriniz, yeni profil ayarlarınızına göre güncellendi.",
+            nutritionPreferences: "Beslenme Tercihleri",
+            dietType: "Diyet Tipi",
+            allergies: "Alerjiler / İntoleranslar",
+            mealsPerDay: "Günlük Öğün Sayısı",
+            // Options
+            diet_standard: "Standart (Her Şey)",
+            diet_vegetarian: "Vejetaryen",
+            diet_vegan: "Vegan",
+            diet_keto: "Ketojenik",
+            diet_paleo: "Paleo",
+            diet_pescetarian: "Pesketaryen",
+            allergy_gluten: "Glutensiz",
+            allergy_dairy: "Sütsüz",
+            allergy_nut: "Kuruyemişsiz",
+            allergy_shellfish: "Kabuklu Deniz Ürünleri - Yok",
+            allergy_none: "Yok",
+            weeklyPace: "Haftalık Hız",
+            pace_relaxed: "Rahat (0.25 kg/hafta)",
+            pace_normal: "Normal (0.5 kg/hafta)",
+            pace_aggressive: "Hızlı (0.8 kg/hafta)",
+
         },
         badges: {
             first_log: {

@@ -1,12 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useMemo } from "react";
-import { Dimensions, ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useMemo, useState } from "react";
+import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { BarChart, LineChart } from "react-native-chart-kit";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLanguage } from "../../context/LanguageContext";
 import { useMeals } from "../../context/MealContext";
-
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -29,7 +28,9 @@ export default function ProgressScreen() {
     const { t } = useLanguage();
     const insets = useSafeAreaInsets();
     const { weightHistory, logs, goals } = useMeals();
+    const [viewMode, setViewMode] = useState<'weekly' | 'monthly'>('weekly'); // New state
 
+    const daysToShow = viewMode === 'weekly' ? 7 : 30;
 
     const weightData = useMemo(() => {
         if (weightHistory.length === 0) return null;
@@ -37,26 +38,30 @@ export default function ProgressScreen() {
         const labels = [];
         const data = [];
 
-
-
         const sortedHistory = [...weightHistory].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-
         let lastKnownWeight = sortedHistory[0].weight;
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+        const windowStartDate = new Date();
+        windowStartDate.setDate(windowStartDate.getDate() - (daysToShow - 1));
 
-
-        const preWindowEntry = sortedHistory.findLast(e => new Date(e.date) < sevenDaysAgo);
+        const preWindowEntry = sortedHistory.findLast(e => new Date(e.date) < windowStartDate);
         if (preWindowEntry) lastKnownWeight = preWindowEntry.weight;
 
-        for (let i = 6; i >= 0; i--) {
+        for (let i = daysToShow - 1; i >= 0; i--) {
             const d = new Date();
             d.setDate(d.getDate() - i);
             const dateStr = d.toISOString().split('T')[0];
 
-            labels.push(`${d.getDate()}/${d.getMonth() + 1}`);
-
+            // For monthly view, show fewer labels to avoid crowding
+            if (viewMode === 'weekly') {
+                labels.push(`${d.getDate()}/${d.getMonth() + 1}`);
+            } else {
+                if (i % 3 === 0) { // Show label every 3 days for scrollable view
+                    labels.push(`${d.getDate()}/${d.getMonth() + 1}`);
+                } else {
+                    labels.push("");
+                }
+            }
 
             const exactEntry = sortedHistory.find(e => e.date === dateStr);
             if (exactEntry) {
@@ -70,22 +75,30 @@ export default function ProgressScreen() {
             labels,
             datasets: [{ data }]
         };
-    }, [weightHistory]);
+    }, [weightHistory, viewMode, daysToShow]);
 
 
-    const { calorieData, weeklyAverage } = useMemo(() => {
+    const { calorieData, averageIntake } = useMemo(() => {
         const labels = [];
         const data = [];
-        let totalWeekCalories = 0;
+        let totalCalories = 0;
         let daysWithData = 0;
 
-        // Show Today first, then go backwards
-        for (let i = 6; i >= 0; i--) {
+        for (let i = daysToShow - 1; i >= 0; i--) {
             const d = new Date();
             d.setDate(d.getDate() - i);
             const dateStr = d.toISOString().split('T')[0];
 
-            labels.push(`${d.getDate()}`);
+            // For monthly view, show fewer labels to avoid crowding
+            if (viewMode === 'weekly') {
+                labels.push(`${d.getDate()}`);
+            } else {
+                if (i % 3 === 0) { // Show label every 3 days for scrollable view
+                    labels.push(`${d.getDate()}`);
+                } else {
+                    labels.push("");
+                }
+            }
 
             const dayLog = logs[dateStr];
             let totalCals = 0;
@@ -95,20 +108,20 @@ export default function ProgressScreen() {
                 });
                 if (totalCals > 0) daysWithData++;
             }
-            totalWeekCalories += totalCals;
+            totalCalories += totalCals;
             data.push(totalCals);
         }
 
-        const avg = daysWithData > 0 ? Math.round(totalWeekCalories / daysWithData) : 0;
+        const avg = daysWithData > 0 ? Math.round(totalCalories / daysWithData) : 0;
 
         return {
             calorieData: {
-                labels, // [20, 21, ..., Today]
+                labels,
                 datasets: [{ data }]
             },
-            weeklyAverage: avg
+            averageIntake: avg
         };
-    }, [logs]);
+    }, [logs, viewMode, daysToShow]);
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -119,6 +132,26 @@ export default function ProgressScreen() {
 
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>{t('progress.title')}</Text>
+
+                {/* View Toggle */}
+                <View style={styles.toggleContainer}>
+                    <TouchableOpacity
+                        style={[styles.toggleButton, viewMode === 'weekly' && styles.toggleButtonActive]}
+                        onPress={() => setViewMode('weekly')}
+                    >
+                        <Text style={[styles.toggleText, viewMode === 'weekly' && styles.toggleTextActive]}>
+                            {t('progress.view_weekly')}
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.toggleButton, viewMode === 'monthly' && styles.toggleButtonActive]}
+                        onPress={() => setViewMode('monthly')}
+                    >
+                        <Text style={[styles.toggleText, viewMode === 'monthly' && styles.toggleTextActive]}>
+                            {t('progress.view_monthly')}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
             </View>
 
             <ScrollView contentContainerStyle={styles.content}>
@@ -130,21 +163,28 @@ export default function ProgressScreen() {
                             <Text style={styles.cardTitle}>{t('progress.weight')}</Text>
                         </View>
                         {weightData && (
-                            <Text style={styles.subtitle}>Last 7 Days</Text>
+                            <Text style={styles.subtitle}>
+                                {viewMode === 'weekly' ? t('progress.last_7_days') : t('progress.last_30_days')}
+                            </Text>
                         )}
                     </View>
 
                     {weightData ? (
-                        <LineChart
-                            data={weightData}
-                            width={screenWidth - 80}
-                            height={220}
-                            chartConfig={chartConfig}
-                            bezier
-                            style={styles.chart}
-                            withDots={true}
-                            withInnerLines={false}
-                        />
+                        <ScrollView horizontal={viewMode === 'monthly'} showsHorizontalScrollIndicator={false}>
+                            <LineChart
+                                data={weightData}
+                                width={viewMode === 'monthly' ? Math.max(screenWidth - 80, 500) : screenWidth - 80}
+                                height={220}
+                                chartConfig={{
+                                    ...chartConfig,
+                                    propsForDots: { r: viewMode === 'monthly' ? "3" : "4" }
+                                }}
+                                bezier
+                                style={styles.chart}
+                                withDots={true}
+                                withInnerLines={false}
+                            />
+                        </ScrollView>
                     ) : (
                         <View style={styles.emptyState}>
                             <Text style={styles.emptyText}>{t('progress.no_weight_data')}</Text>
@@ -161,30 +201,34 @@ export default function ProgressScreen() {
                             <Text style={styles.cardTitle}>{t('progress.calorie_intake')}</Text>
                         </View>
                         <View style={styles.avgBadge}>
-                            <Text style={styles.avgLabel}>{t('progress.weekly_avg')}:</Text>
-                            <Text style={styles.avgValue}>{weeklyAverage} kcal</Text>
+                            <Text style={styles.avgLabel}>
+                                {viewMode === 'weekly' ? t('progress.weekly_avg') : t('progress.monthly_avg')}:
+                            </Text>
+                            <Text style={styles.avgValue}>{averageIntake} kcal</Text>
                         </View>
                     </View>
-                    <BarChart
-                        data={calorieData}
-                        width={screenWidth - 80}
-                        height={220}
-                        yAxisLabel=""
-                        yAxisSuffix=""
-                        chartConfig={{
-                            ...chartConfig,
-                            color: (opacity = 1) => `rgba(249, 115, 22, ${opacity})`,
-                            propsForDots: { r: "4", stroke: "#f97316" },
-                            barPercentage: 0.7,
-                        }}
-                        style={styles.chart}
-                        showValuesOnTopOfBars
-                        withInnerLines={false}
-                    />
+                    <ScrollView horizontal={viewMode === 'monthly'} showsHorizontalScrollIndicator={false}>
+                        <BarChart
+                            data={calorieData}
+                            width={viewMode === 'monthly' ? Math.max(screenWidth - 80, 600) : screenWidth - 80}
+                            height={220}
+                            yAxisLabel=""
+                            yAxisSuffix=""
+                            chartConfig={{
+                                ...chartConfig,
+                                color: (opacity = 1) => `rgba(249, 115, 22, ${opacity})`,
+                                propsForDots: { r: "4", stroke: "#f97316" },
+                                barPercentage: viewMode === 'weekly' ? 0.7 : 0.5,
+                            }}
+                            style={styles.chart}
+                            showValuesOnTopOfBars={viewMode === 'weekly'}
+                            withInnerLines={false}
+                        />
+                    </ScrollView>
                     <View style={styles.goalLine}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                             <Text style={styles.goalText}>{t('progress.daily_goal')} {goals.calories} {t('progress.kcal')}</Text>
-                            <Text style={styles.goalText}> {t('progress.vs_avg')} {weeklyAverage - goals.calories > 0 ? '+' : ''}{weeklyAverage - goals.calories} {t('progress.kcal')}</Text>
+                            <Text style={styles.goalText}> {t('progress.vs_avg')} {averageIntake - goals.calories > 0 ? '+' : ''}{averageIntake - goals.calories} {t('progress.kcal')}</Text>
                         </View>
                     </View>
                 </View>
@@ -200,11 +244,42 @@ const styles = StyleSheet.create({
     header: {
         paddingHorizontal: 24,
         paddingBottom: 16,
+        paddingTop: 16, // Added spacing
     },
     headerTitle: {
         fontSize: 32,
         fontWeight: "800",
         color: "#1e293b",
+        marginBottom: 16, // Space for toggle
+    },
+    toggleContainer: {
+        flexDirection: 'row',
+        backgroundColor: '#e2e8f0',
+        borderRadius: 12,
+        padding: 4,
+        alignSelf: 'flex-start', // Or stretch if you want full width
+    },
+    toggleButton: {
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+    },
+    toggleButtonActive: {
+        backgroundColor: 'white',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
+    },
+    toggleText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#64748b',
+    },
+    toggleTextActive: {
+        color: '#3b82f6',
+        fontWeight: '700',
     },
     content: {
         padding: 24,
@@ -221,12 +296,14 @@ const styles = StyleSheet.create({
         shadowRadius: 24,
         elevation: 8,
         alignItems: "center",
+        width: '100%', // Ensure card fills width
     },
     cardHeader: {
         flexDirection: "row",
         alignItems: "center",
         gap: 8,
-        alignSelf: "flex-start",
+        alignSelf: "stretch", // Stretch to fill card width
+        justifyContent: 'space-between', // Push subtitle/badge to right
         marginBottom: 16,
         paddingHorizontal: 8,
     },
@@ -269,10 +346,8 @@ const styles = StyleSheet.create({
     subtitle: {
         fontSize: 12,
         color: "#94a3b8",
-        marginLeft: 'auto',
     },
     avgBadge: {
-        marginLeft: 'auto',
         flexDirection: 'row',
         alignItems: 'baseline',
         gap: 4,

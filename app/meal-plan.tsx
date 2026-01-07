@@ -45,7 +45,7 @@ export const getDayKey = (date: string) => {
 export default function MealPlanScreen() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
-    const { goals } = useMeals();
+    const { goals, profile } = useMeals();
     const { t } = useLanguage();
 
     const [mealPlan, setMealPlan] = useState<MealPlan | null>(null);
@@ -63,7 +63,11 @@ export default function MealPlanScreen() {
     const loadMealPlan = async () => {
         setLoading(true);
         try {
-            const plan = await generateMealPlan(goals);
+            const plan = await generateMealPlan(goals, {
+                dietType: profile.dietType,
+                allergies: profile.allergies,
+                mealsPerDay: profile.mealsPerDay
+            });
             setMealPlan(plan);
             setShoppingList(generateShoppingList(plan));
             if (plan.days.length > 0) {
@@ -90,7 +94,11 @@ export default function MealPlanScreen() {
             // Capture the currently viewed date
             const distinctDate = selectedDay?.date || (mealPlan && mealPlan.days.length > 0 ? mealPlan.days[0].date : null);
 
-            const plan = await generateMealPlan(goals);
+            const plan = await generateMealPlan(goals, {
+                dietType: profile.dietType,
+                allergies: profile.allergies,
+                mealsPerDay: profile.mealsPerDay
+            });
             setMealPlan(plan);
             setShoppingList(generateShoppingList(plan));
 
