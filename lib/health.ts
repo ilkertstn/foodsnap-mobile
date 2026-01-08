@@ -28,8 +28,10 @@ const initHealthModule = () => {
             const pkg = require('react-native-health');
             AppleHealthKit = pkg.default || pkg;
 
-            // Fallback to NativeModules if wrapper is empty (bridging issue)
-            if ((!AppleHealthKit || !AppleHealthKit.isAvailable) && NativeModules.AppleHealthKit) {
+            // Fallback to NativeModules if wrapper is empty or missing init method
+            // The wrapper might have isAvailable (shim) but lack initHealthKit
+            if ((!AppleHealthKit || !AppleHealthKit.initHealthKit) && NativeModules.AppleHealthKit) {
+                console.warn('Falling back to NativeModules.AppleHealthKit');
                 AppleHealthKit = NativeModules.AppleHealthKit;
             }
         } catch (e) {
@@ -80,14 +82,8 @@ export const isHealthAvailable = async (): Promise<boolean> => {
  */
 export const requestHealthPermissions = async (): Promise<boolean> => {
     if (Platform.OS === 'ios' && AppleHealthKit) {
-        // Check if Constants are available
-        const Constants = AppleHealthKit.Constants || (AppleHealthKit.default ? AppleHealthKit.default.Constants : undefined);
-
-        if (!Constants || !Constants.Permissions) {
-            console.error('HealthKit Constants not found:', AppleHealthKit);
-            alert(`HealthKit Error: Constants not found. Keys: ${Object.keys(AppleHealthKit).join(',')}`);
-            return false;
-        }
+        // Safe access to Constants
+        const Constants = AppleHealthKit.Constants || (AppleHealthKit.default ? AppleHealthKit.default.Constants : undefined) || AppleHealthKit;
 
         const permissions = {
             permissions: {
@@ -106,7 +102,6 @@ export const requestHealthPermissions = async (): Promise<boolean> => {
             AppleHealthKit.initHealthKit(permissions, (err: any) => {
                 if (err) {
                     console.error('initHealthKit error', err);
-                    alert(`initHealthKit Error: ${JSON.stringify(err)}`);
                 }
                 resolve(!err);
             });
