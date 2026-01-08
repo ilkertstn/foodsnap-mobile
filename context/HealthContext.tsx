@@ -97,9 +97,11 @@ export const HealthProvider = ({ children }: { children: React.ReactNode }) => {
                 setHealthData(data);
                 return true;
             }
+            alert("Health permissions not granted. Please check your settings.");
             return false;
-        } catch (e) {
+        } catch (e: any) {
             console.error('Enable health error', e);
+            alert(`Health Error: ${e.message || JSON.stringify(e)}`);
             return false;
         }
     }, []);
