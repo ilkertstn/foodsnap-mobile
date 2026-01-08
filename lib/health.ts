@@ -80,14 +80,23 @@ export const isHealthAvailable = async (): Promise<boolean> => {
  */
 export const requestHealthPermissions = async (): Promise<boolean> => {
     if (Platform.OS === 'ios' && AppleHealthKit) {
+        // Check if Constants are available
+        const Constants = AppleHealthKit.Constants || (AppleHealthKit.default ? AppleHealthKit.default.Constants : undefined);
+
+        if (!Constants || !Constants.Permissions) {
+            console.error('HealthKit Constants not found:', AppleHealthKit);
+            alert(`HealthKit Error: Constants not found. Keys: ${Object.keys(AppleHealthKit).join(',')}`);
+            return false;
+        }
+
         const permissions = {
             permissions: {
                 read: [
-                    AppleHealthKit.Constants.Permissions.StepCount,
-                    AppleHealthKit.Constants.Permissions.ActiveEnergyBurned,
-                    AppleHealthKit.Constants.Permissions.DistanceWalkingRunning,
-                    AppleHealthKit.Constants.Permissions.SleepAnalysis,
-                    AppleHealthKit.Constants.Permissions.HeartRate,
+                    Constants.Permissions.StepCount,
+                    Constants.Permissions.ActiveEnergyBurned,
+                    Constants.Permissions.DistanceWalkingRunning,
+                    Constants.Permissions.SleepAnalysis,
+                    Constants.Permissions.HeartRate,
                 ],
                 write: [],
             },
@@ -95,6 +104,10 @@ export const requestHealthPermissions = async (): Promise<boolean> => {
 
         return new Promise((resolve) => {
             AppleHealthKit.initHealthKit(permissions, (err: any) => {
+                if (err) {
+                    console.error('initHealthKit error', err);
+                    alert(`initHealthKit Error: ${JSON.stringify(err)}`);
+                }
                 resolve(!err);
             });
         });
