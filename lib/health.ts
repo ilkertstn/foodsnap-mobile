@@ -80,30 +80,43 @@ export const isHealthAvailable = async (): Promise<boolean> => {
 /**
  * Request permissions for health data access
  */
+/**
+ * Request permissions for health data access
+ */
 export const requestHealthPermissions = async (): Promise<boolean> => {
     if (Platform.OS === 'ios' && AppleHealthKit) {
-        // Safe access to Constants
-        const Constants = AppleHealthKit.Constants || (AppleHealthKit.default ? AppleHealthKit.default.Constants : undefined) || AppleHealthKit;
+
+        // Constants nesnesi bazen undefined geldiği için
+        // İzinleri doğrudan string olarak tanımlamak en garantisidir.
+        const HealthKitPermissions = {
+            StepCount: "StepCount",
+            ActiveEnergyBurned: "ActiveEnergyBurned",
+            DistanceWalkingRunning: "DistanceWalkingRunning",
+            SleepAnalysis: "SleepAnalysis",
+            HeartRate: "HeartRate",
+        };
 
         const permissions = {
             permissions: {
                 read: [
-                    Constants.Permissions.StepCount,
-                    Constants.Permissions.ActiveEnergyBurned,
-                    Constants.Permissions.DistanceWalkingRunning,
-                    Constants.Permissions.SleepAnalysis,
-                    Constants.Permissions.HeartRate,
+                    HealthKitPermissions.StepCount,
+                    HealthKitPermissions.ActiveEnergyBurned,
+                    HealthKitPermissions.DistanceWalkingRunning,
+                    HealthKitPermissions.SleepAnalysis,
+                    HealthKitPermissions.HeartRate,
                 ],
-                write: [],
+                write: [], // Yazma izni istemiyorsan boş bırakabilirsin
             },
         };
 
         return new Promise((resolve) => {
             AppleHealthKit.initHealthKit(permissions, (err: any) => {
                 if (err) {
-                    console.error('initHealthKit error', err);
+                    console.error('initHealthKit error:', err);
+                    resolve(false); // Hata varsa false dön
+                } else {
+                    resolve(true); // Başarılıysa true dön
                 }
-                resolve(!err);
             });
         });
     } else if (Platform.OS === 'android' && HealthConnect) {
@@ -116,6 +129,7 @@ export const requestHealthPermissions = async (): Promise<boolean> => {
                 { accessType: 'read', recordType: 'SleepSession' },
                 { accessType: 'read', recordType: 'HeartRate' },
             ]);
+            // Granted array'i boş değilse izin verilmiş demektir
             return granted.length > 0;
         } catch (e) {
             console.error('Health Connect permission error', e);
